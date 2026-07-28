@@ -8,16 +8,16 @@ import {
 } from "react-aria-components";
 
 const inputStyles = cva(
-  "bg-input-background peer max-w-full rounded-lg border px-4 py-2.5 text-title-50 placeholder:text-input-placeholder-text focus:ring-4 disabled:border-base-100 disabled:text-input-disabled-text disabled:placeholder:text-input-disabled-text disabled:cursor-not-allowed outline-none data-invalid:border-input-error-focus-border data-invalid:ring-input-error-focus-border/20",
+  "bg-bg-surface peer max-w-full rounded-xl border px-4 py-2.5 text-text-primary placeholder:text-text-placeholder focus:ring-4 disabled:opacity-40 disabled:cursor-not-allowed outline-none",
   {
     variants: {
       state: {
         default:
-          "focus:border-input-primary-focus-border focus:ring-input-primary-focus-border/20 border-base-300 data-invalid:border-input-error-focus-border data-invalid:focus:ring-input-error-focus-border/20",
+          "border-border-default focus:border-primary-500 focus:ring-primary-500/20",
         error:
-          "border-input-error-focus-border focus:ring-input-error-focus-border/20",
+          "border-danger focus:ring-danger/20",
         success:
-          "border-input-success-focus-border focus:ring-input-success-focus-border/20"
+          "border-success focus:ring-success/20"
       }
     }
   }

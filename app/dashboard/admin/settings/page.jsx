@@ -7,11 +7,11 @@ export default function SettingsPage() {
         <DashboardLayout>
             <div className="flex flex-col gap-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-                    <p className="text-sm text-slate-500 mt-1">Platform configuration</p>
+                    <h1 className="text-2xl font-semibold text-text-primary">Settings</h1>
+                    <p className="text-sm text-text-muted mt-1">Platform configuration</p>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
+                <div className="rounded-2xl border border-border-default bg-bg-surface p-6 text-center text-sm text-text-muted">
                     Settings panel coming soon.
                 </div>
             </div>

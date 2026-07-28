@@ -85,7 +85,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64 text-sm text-slate-400">Loading...</div>
+        <div className="flex items-center justify-center h-64 text-sm text-text-muted">Loading...</div>
       </DashboardLayout>
     );
   }
@@ -96,72 +96,72 @@ export default function ProductDetailPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-            <a href="/dashboard/products" className="hover:text-indigo-600">Products</a>
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-1 flex-wrap">
+            <a href="/dashboard/products" className="hover:text-primary-400 text-text-muted">Products</a>
             <span>/</span>
-            <span className="text-slate-900">{product.name}</span>
+            <span className="text-text-primary">{product.name}</span>
           </div>
-          <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-3">
-            <Package className="w-6 h-6 text-indigo-500" />
+          <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-3">
+            <Package className="w-6 h-6 text-primary-500" />
             {product.name}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-text-muted mt-1">
             {store?.name} &middot; ${product.price} &middot; Qty: {product.quantity} &middot; ID: {product.uniqueProductId}
           </p>
         </div>
 
         {store?.disabled && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 flex items-center gap-2">
+          <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             This store is disabled: {store.disabledReason}
           </div>
         )}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
-              <Wrench className="w-5 h-5 text-slate-600" />
-              <h2 className="text-lg font-semibold text-slate-900">Services</h2>
+              <Wrench className="w-5 h-5 text-text-secondary" />
+              <h2 className="text-lg font-semibold text-text-primary">Services</h2>
               {store && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-text-muted">
                   ({services.length}/{store.serviceLimit} used)
                 </span>
               )}
             </div>
-            <Button size="sm" className="gap-2" onPress={() => setShowSvcForm(!showSvcForm)} isDisabled={remaining <= 0 && !showSvcForm}>
+            <Button size="sm" className="gap-2 w-fit" onPress={() => setShowSvcForm(!showSvcForm)} isDisabled={remaining <= 0 && !showSvcForm}>
               <Plus className="w-4 h-4" />
               {showSvcForm ? "Cancel" : "Add Service"}
             </Button>
           </div>
 
           {remaining <= 0 && !showSvcForm && (
-            <p className="text-xs text-amber-600 mb-3">
+            <p className="text-xs text-warning mb-3">
               Service limit reached. Contact <strong>b2cstore.support@gmail.com</strong> to increase your limit.
             </p>
           )}
 
           {showSvcForm && (
-            <div className="mb-4 p-4 rounded-lg border border-slate-200 bg-slate-50">
+            <div className="mb-4 p-4 rounded-xl border border-border-default bg-bg-muted">
               <div className="grid gap-3 max-w-md">
                 <div className="grid gap-1">
-                  <Label htmlFor={svcNameId} className="text-sm text-slate-700">Service Name</Label>
+                  <Label htmlFor={svcNameId} className="text-sm text-text-secondary">Service Name</Label>
                   <Input id={svcNameId} placeholder="Installation" value={svcName} onChange={(e) => setSvcName(e.target.value)} />
                 </div>
                 <div className="grid gap-1">
-                  <Label htmlFor={svcChargesId} className="text-sm text-slate-700">Charges ($)</Label>
+                  <Label htmlFor={svcChargesId} className="text-sm text-text-secondary">Charges ($)</Label>
                   <Input id={svcChargesId} type="number" placeholder="29.99" value={svcCharges} onChange={(e) => setSvcCharges(e.target.value)} />
                 </div>
                 <div className="grid gap-1">
-                  <Label htmlFor={svcDescId} className="text-sm text-slate-700">Description</Label>
+                  <Label htmlFor={svcDescId} className="text-sm text-text-secondary">Description</Label>
                   <textarea
                     id={svcDescId}
                     placeholder="What does this service include?"
                     value={svcDescription}
                     onChange={(e) => setSvcDescription(e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 min-h-[60px]"
+                    className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 min-h-[60px]"
                   />
                 </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p className="text-sm text-danger">{error}</p>}
                 <Button onPress={handleAddService} isDisabled={loading}>
                   {loading ? "Adding..." : "Add Service"}
                 </Button>
@@ -170,20 +170,20 @@ export default function ProductDetailPage() {
           )}
 
           {services.length === 0 ? (
-            <p className="text-sm text-slate-400">No services added to this product yet.</p>
+            <p className="text-sm text-text-muted">No services added to this product yet.</p>
           ) : (
             <div className="grid gap-3">
               {services.map((svc) => (
-                <div key={svc._id} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50">
+                <div key={svc._id} className="flex items-center justify-between p-4 rounded-xl border border-border-default bg-bg-muted">
                   <div>
-                    <p className="font-medium text-sm text-slate-900">{svc.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="font-medium text-sm text-text-primary">{svc.name}</p>
+                    <p className="text-xs text-text-muted mt-0.5">
                       ${svc.charges}{svc.description ? ` — ${svc.description}` : ""}
                     </p>
                   </div>
                   <button
                     onClick={() => handleDeleteService(svc._id)}
-                    className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -36,7 +36,7 @@ export function Dialog({
     >
       <AriaDialog
         className={cn(
-          "w-full max-w-140 max-sm:max-w-[calc(100%-2rem)] p-6 border border-base-100 bg-background-100 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-lg outline-none",
+          "w-full max-w-140 max-sm:max-w-[calc(100%-2rem)] p-6 border border-border-default bg-bg-surface fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl shadow-xl outline-none",
           className
         )}
         {...props}
@@ -48,7 +48,7 @@ export function Dialog({
               <AriaButton
                 onPress={close}
                 aria-label="Close"
-                className="absolute top-4 right-4 flex size-7 items-center justify-center rounded-md text-text-100 opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-500 disabled:pointer-events-none [&>svg]:size-5"
+                className="absolute top-4 right-4 flex size-7 items-center justify-center rounded-md text-text-muted opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-500 disabled:pointer-events-none [&>svg]:size-5"
               >
                 <Close />
                 <span className="sr-only">Close</span>
@@ -82,7 +82,7 @@ export function DialogTitle({ className, ...props }: DialogTitleProps) {
     <Heading
       slot="title"
       className={cn(
-        "text-lg font-semibold leading-none text-title-50",
+        "text-lg font-semibold leading-none text-text-primary",
         className
       )}
       {...props}
@@ -102,7 +102,7 @@ export function DialogBody({ className, ...props }: DialogBodyProps) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("py-4 text-sm text-text-100", className)}
+      className={cn("py-4 text-sm text-text-secondary", className)}
       {...props}
     />
   );

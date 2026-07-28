@@ -44,12 +44,12 @@ export default function ForgotPassword() {
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className="text-sm text-indigo-600 hover:text-indigo-500 transition-colors"
+                className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
             >
                 Forgot password?
             </button>
 
-            <Dialog isOpen={isOpen} onOpenChange={setIsOpen} className="w-sm">
+            <Dialog isOpen={isOpen} onOpenChange={setIsOpen}>
                 <DialogHeader>
                     <DialogTitle>Reset your password</DialogTitle>
                     <DialogDescription>
@@ -59,7 +59,7 @@ export default function ForgotPassword() {
                 </DialogHeader>
                 <DialogBody>
                     <div className="grid gap-2">
-                        <Label htmlFor={id} className="text-sm text-slate-700">
+                        <Label htmlFor={id} className="text-sm text-text-secondary">
                             Email
                         </Label>
                         <Input
@@ -71,10 +71,10 @@ export default function ForgotPassword() {
                         />
                     </div>
                     {error && (
-                        <p className="mt-2 text-sm text-red-500">{error}</p>
+                        <p className="mt-2 text-sm text-danger">{error}</p>
                     )}
                     {sent && (
-                        <p className="mt-2 text-sm text-emerald-600">
+                        <p className="mt-2 text-sm text-success">
                             Check your inbox for the reset link.
                         </p>
                     )}
@@ -84,8 +84,9 @@ export default function ForgotPassword() {
                         Cancel
                     </Button>
                     <Button
+                        variant="primary"
                         onPress={handleReset}
-                        isDisabled={loading}
+                        disabled={loading}
                     >
                         {loading ? "Sending..." : "Send Reset Link"}
                     </Button>

@@ -24,7 +24,6 @@ export default function Login() {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             router.push("/dashboard");
-            console.log('Successfully login into your account')
         } catch (err) {
             setError(err.message);
         } finally {
@@ -32,22 +31,18 @@ export default function Login() {
         }
     };
 
-
-
-    const handleForgotPassowrd = async () => {
-    }
     return (
         <div>
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">
+            <h2 className="text-2xl font-semibold text-text-primary mb-2">
                 Welcome back
             </h2>
-            <p className="text-sm text-slate-500 mb-8">
+            <p className="text-sm text-text-secondary mb-8">
                 Sign in with your email and password to continue.
             </p>
 
             <div className="flex flex-col gap-4">
                 <div className="w-full grid gap-2">
-                    <Label htmlFor={id} className="text-sm text-slate-700">
+                    <Label htmlFor={id} className="text-sm text-text-secondary">
                         Email
                     </Label>
                     <Input
@@ -55,13 +50,12 @@ export default function Login() {
                         type="email"
                         placeholder="Enter your email"
                         value={email}
-                        className='text-black'
                         onChange={(e) => setEmail(e.target.value)}
                     />
                 </div>
 
                 <div className="w-full grid gap-2">
-                    <Label htmlFor={passwordId} className="text-sm text-slate-700">
+                    <Label htmlFor={passwordId} className="text-sm text-text-secondary">
                         Password
                     </Label>
                     <Input
@@ -69,7 +63,6 @@ export default function Login() {
                         type="password"
                         placeholder="Enter your password"
                         value={password}
-                        className='text-black'
                         onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
@@ -78,13 +71,13 @@ export default function Login() {
                     <ForgotPassword />
                 </div>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                {error && <p className="text-danger text-sm">{error}</p>}
 
                 <Button
                     variant="primary"
                     size="sm"
                     onClick={handleLogin}
-                    isDisabled={loading}
+                    disabled={loading}
                     className="w-full"
                 >
                     {loading ? "Signing in..." : "Sign In"}

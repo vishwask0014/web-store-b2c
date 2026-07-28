@@ -2,61 +2,61 @@ import Login from "@/app/components/AuthForm/Login";
 import SignIn from "@/app/components/AuthForm/SignIn";
 import { TabContent, TabList, TabRoot, TabTrigger } from "@/components/tailgrids/core/tabs";
 
-export default function page() {
+export default function AuthPage() {
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 p-4">
-            <div className="w-full max-w-4xl rounded-3xl overflow-hidden shadow-xl grid md:grid-cols-2 bg-white">
+        <div className="min-h-screen w-full flex items-center justify-center bg-bg-primary p-4">
+            <div className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-xl grid md:grid-cols-2 bg-bg-surface border border-border-default">
                 {/* LEFT — form panel */}
-                <div className="p-8 sm:p-10 w-fit flex flex-col justify-center">
-                    <TabRoot defaultValue="signUp" className="w-fit">
-                        <TabList className="flex gap-2 border-b border-slate-200 !w-fit">
-                            <TabTrigger
-                                className="px-4 py-2 text-sm font-medium text-slate-500 data-[selected]:text-slate-900 data-[selected]:border-b-2 data-[selected]:border-indigo-500"
-                                value="signUp"
-                            >
-                                Sign Up
-                            </TabTrigger>
-                            <TabTrigger
-                                className="px-4 py-2 text-sm font-medium text-slate-500 data-[selected]:text-slate-900 data-[selected]:border-b-2 data-[selected]:border-indigo-500"
-                                value="signIn"
-                            >
-                                Sign In
-                            </TabTrigger>
-
+                <div className="p-8 sm:p-10 flex flex-col justify-center">
+                    <TabRoot variant="minimal" defaultValue="signUp" className="border-0 !p-0">
+                        <TabList>
+                            <div className="flex gap-0 border-b border-border-divider w-full">
+                                <TabTrigger
+                                    value="signUp"
+                                    className="px-4 py-2.5 text-sm font-medium text-text-muted data-[active=true]:text-text-primary border-b-2 border-transparent data-[active=true]:border-primary-500 rounded-none"
+                                >
+                                    Sign Up
+                                </TabTrigger>
+                                <TabTrigger
+                                    value="signIn"
+                                    className="px-4 py-2.5 text-sm font-medium text-text-muted data-[active=true]:text-text-primary border-b-2 border-transparent data-[active=true]:border-primary-500 rounded-none"
+                                >
+                                    Sign In
+                                </TabTrigger>
+                            </div>
                         </TabList>
 
-                        <TabContent value="signUp">
+                        <TabContent value="signUp" className="pt-6 px-0">
                             <Login />
                         </TabContent>
 
-                        <TabContent value="signIn">
+                        <TabContent value="signIn" className="pt-6 px-0">
                             <SignIn />
                         </TabContent>
                     </TabRoot>
                 </div>
 
                 {/* RIGHT — brand panel */}
-                <div className="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-800 text-white">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold">
-                            ▲
+                <div className="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-bg-primary to-primary-900/50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center font-bold text-text-primary text-sm">
+                            S
                         </div>
-                        <span className="text-lg font-medium text-white/60">
-                            Your Brand
+                        <span className="text-lg font-medium text-text-muted">
+                            Store
                         </span>
                     </div>
 
                     <div>
-                        <p className="text-lg leading-snug text-white/90">
-                            One account, however you'd rather sign in — email and
-                            password, or your phone.
+                        <p className="text-xl leading-snug text-text-primary">
+                            One account, however you&apos;d rather sign in.
                         </p>
                     </div>
 
-                    <div className="text-sm text-white/50">
+                    <div className="text-sm text-text-muted">
                         Need help? Contact us via{" "}
-                        <span className="text-white/80 font-medium">
-                            support@yourbrand.com
+                        <span className="text-text-secondary font-medium">
+                            support@store.com
                         </span>
                     </div>
                 </div>

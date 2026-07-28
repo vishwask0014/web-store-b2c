@@ -67,40 +67,41 @@ export default function StorePage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Store</h1>
-            <p className="text-sm text-slate-500 mt-1">Manage your stores (max 2)</p>
+            <h1 className="text-2xl font-semibold text-text-primary">Store</h1>
+            <p className="text-sm text-text-muted mt-1">Manage your stores (max 2)</p>
           </div>
-          <Button size="sm" className="gap-2" onPress={() => setShowForm(!showForm)} isDisabled={enabledStores.length >= 2 && !showForm}>
+          <Button size="sm" className="gap-2 w-fit" onPress={() => setShowForm(!showForm)} isDisabled={enabledStores.length >= 2 && !showForm}>
             <Plus className="w-4 h-4" />
             {showForm ? "Cancel" : "New Store"}
           </Button>
         </div>
 
         {enabledStores.length >= 2 && !showForm && (
-          <p className="text-xs text-amber-600">
+          <p className="text-xs text-warning flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
             Store limit reached. You can only have 2 stores per account.
           </p>
         )}
 
         {showForm && (
-          <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Create Store</h3>
+          <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Create Store</h3>
             <div className="grid gap-4 max-w-md">
               <div className="grid gap-2">
-                <Label htmlFor={emailId} className="text-sm text-slate-700">Store Name</Label>
+                <Label htmlFor={emailId} className="text-sm text-text-secondary">Store Name</Label>
                 <Input id={emailId} placeholder="My Store" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor={phoneId} className="text-sm text-slate-700">Phone Number</Label>
+                <Label htmlFor={phoneId} className="text-sm text-text-secondary">Phone Number</Label>
                 <Input id={phoneId} placeholder="+1 234 567 8900" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor={categoryId} className="text-sm text-slate-700">Category</Label>
+                <Label htmlFor={categoryId} className="text-sm text-text-secondary">Category</Label>
                 <Input id={categoryId} placeholder="e.g. Home Cleaning, Tools, Electronics" value={category} onChange={(e) => setCategory(e.target.value)} />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && <p className="text-sm text-danger">{error}</p>}
               <Button onPress={handleCreate} isDisabled={loading}>
                 {loading ? "Creating..." : "Create Store"}
               </Button>
@@ -109,7 +110,7 @@ export default function StorePage() {
         )}
 
         {stores.length === 0 && !showForm ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+          <div className="rounded-2xl border border-border-default bg-bg-surface p-8 text-center text-sm text-text-muted">
             No stores yet. Create one to get started.
           </div>
         ) : (
@@ -117,34 +118,34 @@ export default function StorePage() {
             {stores.map((s) => (
               <div
                 key={s._id}
-                className={`rounded-xl border p-5 flex items-center justify-between ${
+                className={`rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                   s.disabled
-                    ? "border-red-200 bg-red-50"
-                    : "border-slate-200 bg-white"
+                    ? "border-danger/30 bg-danger/5"
+                    : "border-border-default bg-bg-surface"
                 }`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    s.disabled ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-600"
+                    s.disabled ? "bg-danger/15 text-danger" : "bg-primary-500/15 text-primary-400"
                   }`}>
                     {s.disabled ? <AlertTriangle className="w-5 h-5" /> : <Store className="w-5 h-5" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-900">{s.name}</p>
+                      <p className="font-medium text-text-primary">{s.name}</p>
                       {s.disabled && (
-                        <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full font-medium">
+                        <span className="text-xs text-danger bg-danger/10 px-2 py-0.5 rounded-full font-medium">
                           Disabled
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted flex-wrap">
                       <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{s.phoneNumber}</span>
                       <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{s.category}</span>
-                      <span className="text-slate-300">ID: {s.uniqueStoreId}</span>
+                      <span className="text-text-placeholder">ID: {s.uniqueStoreId}</span>
                     </div>
                     {s.disabledReason && (
-                      <p className="text-xs text-red-500 mt-1">{s.disabledReason}</p>
+                      <p className="text-xs text-danger mt-1">{s.disabledReason}</p>
                     )}
                   </div>
                 </div>

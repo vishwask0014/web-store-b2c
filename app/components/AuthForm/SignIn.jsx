@@ -42,55 +42,66 @@ export default function SignIn() {
     };
 
     return (
-        <div className="flex flex-col gap-4">
-            <h2 className="text-2xl">Create Account</h2>
+        <div>
+            <h2 className="text-2xl font-semibold text-text-primary mb-2">
+                Create Account
+            </h2>
+            <p className="text-sm text-text-secondary mb-8">
+                Create your account to get started.
+            </p>
 
-            <div className="max-w-sm w-full grid gap-2">
-                <Label htmlFor={nameId}>Name</Label>
-                <Input
-                    id={nameId}
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    className='text-black'
-                    onChange={(e) => setName(e.target.value)}
-                />
+            <div className="flex flex-col gap-4">
+                <div className="w-full grid gap-2">
+                    <Label htmlFor={nameId} className="text-sm text-text-secondary">
+                        Name
+                    </Label>
+                    <Input
+                        id={nameId}
+                        type="text"
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                    />
+                </div>
+
+                <div className="w-full grid gap-2">
+                    <Label htmlFor={emailId} className="text-sm text-text-secondary">
+                        Email
+                    </Label>
+                    <Input
+                        id={emailId}
+                        type="email"
+                        placeholder="john@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+
+                <div className="w-full grid gap-2">
+                    <Label htmlFor={passwordId} className="text-sm text-text-secondary">
+                        Password
+                    </Label>
+                    <Input
+                        id={passwordId}
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+
+                {error && <p className="text-danger text-sm">{error}</p>}
+
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSignIn}
+                    disabled={loading}
+                    className="w-full"
+                >
+                    {loading ? "Creating account..." : "Create Account"}
+                </Button>
             </div>
-
-            <div className="max-w-sm w-full grid gap-2">
-                <Label htmlFor={emailId}>Email</Label>
-                <Input
-                    id={emailId}
-                    type="email"
-                    placeholder="john@example.com"
-                    value={email}
-                    className='text-black'
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-            </div>
-
-            <div className="max-w-sm w-full grid gap-2">
-                <Label htmlFor={passwordId}>Password</Label>
-                <Input
-                    id={passwordId}
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    className='text-black'
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
-
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-
-            <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSignIn}
-                isDisabled={loading}
-            >
-                {loading ? "Creating account..." : "Create Account"}
-            </Button>
         </div>
     );
 }

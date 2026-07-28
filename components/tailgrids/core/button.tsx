@@ -8,7 +8,7 @@ import {
 } from "react-aria-components";
 
 export const buttonStyles = cva(
-  "flex items-center justify-center gap-3 rounded-lg font-medium transition focus:ring-3 disabled:pointer-events-none [&>svg]:text-current outline-none",
+  "flex items-center justify-center gap-3 font-medium transition-all duration-150 focus:ring-3 disabled:pointer-events-none [&>svg]:text-current outline-none rounded-xl",
   {
     variants: {
       variant: {
@@ -26,10 +26,10 @@ export const buttonStyles = cva(
         false: ""
       },
       size: {
-        xs: "text-xs [&>svg]:size-5",
+        xs: "text-xs [&>svg]:size-4",
         sm: "text-sm [&>svg]:size-5",
-        md: "[&>svg]:size-6",
-        lg: "[&>svg]:size-6"
+        md: "text-sm [&>svg]:size-5",
+        lg: "text-base [&>svg]:size-5"
       }
     },
     compoundVariants: [
@@ -37,55 +37,54 @@ export const buttonStyles = cva(
         variant: ["primary", "danger", "success"],
         appearance: "fill",
         className:
-          "text-white-100 disabled:bg-button-disabled-background disabled:text-button-disabled-text"
+          "text-text-primary disabled:opacity-40 disabled:bg-bg-surface"
       },
       {
         variant: ["primary", "danger", "success"],
         appearance: "outline",
-        // Disabled styles
         className:
-          "disabled:bg-button-outline-disabled-background border disabled:border-button-outline-disabled-border disabled:text-button-outline-disabled-text"
+          "border disabled:opacity-40 disabled:bg-bg-muted"
       },
       {
         variant: "primary",
         appearance: "fill",
         className:
-          "focus:ring-button-primary-focus-ring bg-button-primary-background hover:bg-button-primary-hover-background text-button-primary-text"
+          "focus:ring-primary-500/30 bg-primary-500 hover:bg-primary-600 text-text-primary shadow-sm"
       },
       {
         variant: "primary",
         appearance: "outline",
         className:
-          "border-button-outline-border bg-button-outline-background text-button-outline-text hover:bg-button-outline-hover-background hover:text-button-outline-hover-text focus:ring-button-outline-focus-ring"
+          "border-primary-500 bg-transparent text-primary-500 hover:bg-primary-500/10 focus:ring-primary-500/30"
       },
       {
         variant: "danger",
         appearance: "fill",
         className:
-          "bg-button-error-background hover:bg-button-error-hover-background focus:ring-button-error-focus-ring text-button-error-text"
+          "bg-danger hover:bg-red-600 focus:ring-red-500/30 text-text-primary"
       },
       {
         variant: "danger",
         appearance: "outline",
         className:
-          "border-button-error-outline-border bg-button-error-outline-background text-button-error-outline-text hover:bg-button-error-outline-hover-background hover:text-button-error-outline-hover-text focus:ring-button-error-outline-focus-ring"
+          "border-danger bg-transparent text-danger hover:bg-danger/10 focus:ring-red-500/30"
       },
       {
         variant: "success",
         appearance: "fill",
         className:
-          "bg-button-success-background hover:bg-button-success-hover-background focus:ring-button-success-focus-ring text-button-success-text"
+          "bg-success hover:bg-emerald-600 focus:ring-emerald-500/30 text-text-primary"
       },
       {
         variant: "success",
         appearance: "outline",
         className:
-          "border-button-success-outline-border bg-button-success-outline-background text-button-success-outline-text hover:bg-button-success-outline-hover-background focus:ring-button-success-outline-focus-ring"
+          "border-success bg-transparent text-success hover:bg-success/10 focus:ring-emerald-500/30"
       },
       {
         variant: "ghost",
         className:
-          "focus:ring-primary-400 text-button-ghost-text hover:bg-button-ghost-hover-background hover:text-button-ghost-hover-text focus:ring-2"
+          "focus:ring-primary-500/30 text-text-muted hover:bg-bg-muted hover:text-text-secondary focus:ring-2"
       },
       {
         iconOnly: true,
@@ -100,7 +99,7 @@ export const buttonStyles = cva(
       {
         iconOnly: false,
         size: ["xs", "sm"],
-        className: "px-3.5"
+        className: "px-4 py-2"
       },
       {
         iconOnly: true,
@@ -110,7 +109,7 @@ export const buttonStyles = cva(
       {
         iconOnly: false,
         size: "md",
-        className: "px-4"
+        className: "px-5 py-2.5"
       },
       {
         iconOnly: true,
@@ -120,12 +119,8 @@ export const buttonStyles = cva(
       {
         iconOnly: false,
         size: "lg",
-        className: "px-5"
+        className: "px-6 py-3"
       },
-      {
-        iconOnly: false,
-        className: "py-2.5"
-      }
     ],
     defaultVariants: {
       variant: "primary",
