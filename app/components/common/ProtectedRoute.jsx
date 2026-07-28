@@ -1,18 +1,24 @@
 "use client";
 
 import { useAuth } from "@/app/providers/AuthProvider";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }) {
+  const { user, userType, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       router.replace("/auth");
+      return;
     }
-  }, [user, loading, router]);
+    if (requiredRole && userType !== requiredRole) {
+      router.replace("/dashboard");
+    }
+  }, [user, userType, loading, router, requiredRole]);
 
   if (loading || !user) {
     return (
@@ -23,6 +29,10 @@ export default function ProtectedRoute({ children }) {
         </div>
       </div>
     );
+  }
+
+  if (requiredRole && userType !== requiredRole) {
+    return null;
   }
 
   return children;

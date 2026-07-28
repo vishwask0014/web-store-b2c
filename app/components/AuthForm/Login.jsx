@@ -7,6 +7,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import ForgotPassword from "./ForgotPassword";
 
 export default function Login() {
     const router = useRouter();
@@ -31,6 +32,10 @@ export default function Login() {
         }
     };
 
+
+
+    const handleForgotPassowrd = async () => {
+    }
     return (
         <div>
             <h2 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -67,6 +72,10 @@ export default function Login() {
                         className='text-black'
                         onChange={(e) => setPassword(e.target.value)}
                     />
+                </div>
+
+                <div className="flex justify-end w-full">
+                    <ForgotPassword />
                 </div>
 
                 {error && <p className="text-red-500 text-sm">{error}</p>}

@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
-import { auth } from "@/app/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "@/app/lib/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
@@ -24,8 +25,14 @@ export default function SignIn() {
         setError("");
         setLoading(true);
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            console.log('Account created Successfully, redirect to dashboard')
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(cred.user, { displayName: name });
+            await setDoc(doc(db, "users", cred.user.uid), {
+                name,
+                email,
+                role: "customer",
+                createdAt: new Date().toISOString(),
+            });
             router.push("/dashboard");
         } catch (err) {
             setError(err.message);
