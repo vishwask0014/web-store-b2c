@@ -32,10 +32,10 @@
   --color-secondary-900: #6a308b;
 
   /* Background */
-  --color-bg-primary: #0b1957;
-  --color-bg-surface: #13224a;
-  --color-bg-muted: #1a2552;
-  --color-bg-elevated: #182855;
+  --color-bg-primary: #050a1f;
+  --color-bg-surface: #0a1233;
+  --color-bg-muted: #0d1738;
+  --color-bg-elevated: #0f1a3d;
 
   /* Border */
   --color-border-default: #27356e;
