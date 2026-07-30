@@ -1,8 +1,7 @@
 "use client";
 
-import { auth, db } from "@/app/lib/firebase";
+import { auth } from "@/app/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 import { create } from "zustand";
 
 const useAuthStore = create((set) => ({
@@ -25,8 +24,24 @@ export function initAuth() {
     setUser(firebaseUser);
     if (firebaseUser) {
       try {
-        const docSnap = await getDoc(doc(db, "users", firebaseUser.uid));
-        setUserType(docSnap.exists() ? docSnap.data().role || "customer" : "customer");
+        const res = await fetch(`/api/users?uid=${firebaseUser.uid}`);
+        if (res.ok) {
+          const userData = await res.json();
+          setUserType(userData.role || "customer");
+        } else {
+          const createRes = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+              email: firebaseUser.email,
+              role: "customer",
+            }),
+          });
+          const newUser = await createRes.json();
+          setUserType(newUser.role || "customer");
+        }
       } catch {
         setUserType("customer");
       }

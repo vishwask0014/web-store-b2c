@@ -1,9 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/app/components/common/dashboardLayout";
-import { db } from "@/app/lib/firebase";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { collection, getDocs, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 const ROLE_BADGE = {
@@ -20,9 +18,9 @@ export default function UsersPage() {
     useEffect(() => {
         if (userType !== "admin") return;
         const fetchUsers = async () => {
-            const q = query(collection(db, "users"));
-            const snap = await getDocs(q);
-            setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            const res = await fetch("/api/users");
+            const data = await res.json();
+            setUsers(data);
         };
         fetchUsers();
     }, [userType]);
@@ -55,7 +53,7 @@ export default function UsersPage() {
                                     </tr>
                                 ) : (
                                     users.map((u) => (
-                                        <tr key={u.id} className="border-b border-border-divider last:border-0">
+                                        <tr key={u._id} className="border-b border-border-divider last:border-0">
                                             <td className="px-4 py-3 font-medium text-text-primary">{u.name}</td>
                                             <td className="px-4 py-3 text-text-secondary">{u.email}</td>
                                             <td className="px-4 py-3">
@@ -72,7 +70,7 @@ export default function UsersPage() {
                             </tbody>
                         </table>
                     </div>
-                </div>
+    </div>
             </div>
         </DashboardLayout>
     );
