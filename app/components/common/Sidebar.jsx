@@ -14,6 +14,8 @@ import {
     Settings,
     X,
     ShoppingBag,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from "lucide-react";
 
 const ROLE_BADGE = {
@@ -33,7 +35,7 @@ const ICONS = {
     settings: Settings,
 };
 
-export default function Sidebar({ mobileOpen, onClose }) {
+export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollapse, onExpand }) {
     const pathname = usePathname();
     const { userType } = useAuth();
     const [openSlug, setOpenSlug] = useState("dashboard");
@@ -76,6 +78,24 @@ export default function Sidebar({ mobileOpen, onClose }) {
         .filter((item) => item.name && item.slug)
         .filter((item) => !item.role || item.role === userType);
 
+    const handleSectionClick = (item, isOpen) => {
+        if (collapsed) {
+            onExpand?.();
+            setOpenSlug(item.slug);
+            return;
+        }
+        setOpenSlug(isOpen ? "" : item.slug);
+    };
+
+    const itemClass = (active) =>
+        `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            collapsed ? "justify-center px-0" : ""
+        } ${
+            active
+                ? "bg-primary-500/15 text-primary-400"
+                : "text-text-secondary/60 hover:bg-white/5 hover:text-text-primary"
+        }`;
+
     return (
         <>
             {mobileOpen && (
@@ -85,21 +105,23 @@ export default function Sidebar({ mobileOpen, onClose }) {
                 />
             )}
             <div
-                className={`fixed md:relative z-40 h-screen w-[280px] bg-bg-primary text-text-primary flex flex-col shrink-0 transition-transform duration-300 md:translate-x-0 ${
+                className={`fixed md:relative z-40 h-screen w-[280px] bg-bg-primary text-text-primary flex flex-col shrink-0 transition-all duration-300 md:translate-x-0 ${
+                    collapsed ? "md:w-[72px]" : "md:w-[280px]"
+                } ${
                     mobileOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
             >
-                <div className="px-6 py-6 flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <Logo />
-                            <button
-                                onClick={onClose}
-                                className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/5"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                    {userType && (
+                <div className={`py-6 flex flex-col gap-3 ${collapsed ? "items-center px-2" : "px-6"}`}>
+                    <div className="flex items-center justify-between w-full">
+                        <Logo showText={!collapsed} />
+                        <button
+                            onClick={onClose}
+                            className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/5"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    {userType && !collapsed && (
                         <div className={`inline-flex self-start items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-medium ${ROLE_BADGE[userType] || ROLE_BADGE.customer}`}>
                             {userType.charAt(0).toUpperCase() + userType.slice(1)}
                         </div>
@@ -117,39 +139,29 @@ export default function Sidebar({ mobileOpen, onClose }) {
                                 {!item.isChild ? (
                                     <a
                                         href={`/${item.slug}`}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                                        ${isActive
-                                            ? "bg-primary-500/15 text-primary-400"
-                                            : "text-text-secondary/60 hover:bg-white/5 hover:text-text-primary"
-                                        }`}
+                                        title={collapsed ? item.name : undefined}
+                                        className={itemClass(isActive)}
                                     >
-                                        <Icon className="w-4 h-4 shrink-0" />
-                                        <span className="flex-1 text-left">{item.name}</span>
+                                        <Icon className="w-5 h-5 shrink-0" />
+                                        {!collapsed && <span className="flex-1 text-left">{item.name}</span>}
                                     </a>
                                 ) : (
-                                <button
-                                    onClick={() =>
-                                        item.isChild
-                                            ? setOpenSlug(isOpen ? "" : item.slug)
-                                            : null
-                                    }
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                                        ${isActive
-                                            ? "bg-primary-500/15 text-primary-400"
-                                            : "text-text-secondary/60 hover:bg-white/5 hover:text-text-primary"
-                                        }`}
-                                >
-                                    <Icon className="w-4 h-4 shrink-0" />
-                                    <span className="flex-1 text-left">{item.name}</span>
-                                    {item.isChild && (
-                                        <ChevronDown
-                                            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                                        />
-                                    )}
-                                </button>
+                                    <button
+                                        onClick={() => handleSectionClick(item, isOpen)}
+                                        title={collapsed ? item.name : undefined}
+                                        className={itemClass(isActive)}
+                                    >
+                                        <Icon className="w-5 h-5 shrink-0" />
+                                        {!collapsed && <span className="flex-1 text-left">{item.name}</span>}
+                                        {!collapsed && item.isChild && (
+                                            <ChevronDown
+                                                className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                            />
+                                        )}
+                                    </button>
                                 )}
 
-                                {item.isChild && isOpen && (
+                                {item.isChild && isOpen && !collapsed && (
                                     <div className="ml-4 pl-3 border-l border-border-default/30 mt-1 flex flex-col gap-1">
                                         {item.subMenu.map((sub) => {
                                             const SubIcon = ICONS[sub.icon] ?? Home;
@@ -175,6 +187,23 @@ export default function Sidebar({ mobileOpen, onClose }) {
                         );
                     })}
                 </nav>
+
+                <div className="p-3 border-t border-border-default/40">
+                    <button
+                        onClick={onToggleCollapse}
+                        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        className="hidden md:flex w-full items-center justify-center gap-2 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors"
+                    >
+                        {collapsed ? (
+                            <PanelLeftOpen className="w-5 h-5" />
+                        ) : (
+                            <>
+                                <PanelLeftClose className="w-5 h-5" />
+                                <span className="text-xs font-medium">Collapse</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </>
     );
