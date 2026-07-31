@@ -75,7 +75,7 @@ export async function POST(req) {
     }
     if (!payment) {
       return NextResponse.json(
-        { error: "No payment method on file. Add a credit/debit card in your profile first." },
+        { error: "No payment method on file. Add a card or UPI ID in your profile first." },
         { status: 400 }
       );
     }
@@ -127,6 +127,8 @@ export async function POST(req) {
       currency: "USD",
       deliveryLocation: location || user.location || {},
       paymentMethod: {
+        type: payment.type || "card",
+        upiId: payment.upiId || "",
         brand: payment.brand || "",
         last4: payment.last4 || "",
         holderName: payment.holderName || "",

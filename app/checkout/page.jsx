@@ -6,7 +6,7 @@ import { useCartStore } from "@/app/stores/cartStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Package, CreditCard, MapPin, ShieldCheck, CheckCircle2, Check } from "lucide-react";
+import { Package, CreditCard, MapPin, ShieldCheck, CheckCircle2, Check, Smartphone } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -174,18 +174,19 @@ export default function CheckoutPage() {
                     href="/profile-settings"
                     className="text-sm text-primary-400 hover:text-primary-500 font-medium"
                   >
-                    Add a card in your profile &rarr;
+                    Add a card or UPI ID in your profile &rarr;
                   </Link>
                 </div>
               ) : (
                 <div className="grid gap-2 max-w-md">
-                  {profile.paymentMethods.map((card) => {
-                    const isDefault = profile.defaultPaymentMethod === String(card._id);
+                  {profile.paymentMethods.map((method) => {
+                    const isDefault = profile.defaultPaymentMethod === String(method._id);
+                    const isUpi = method.type === "upi";
                     return (
                       <label
-                        key={card._id}
+                        key={method._id}
                         className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                          paymentMethodId === String(card._id)
+                          paymentMethodId === String(method._id)
                             ? "border-primary-500/60 bg-primary-500/5"
                             : "border-border-default hover:border-primary-500/40"
                         }`}
@@ -193,16 +194,20 @@ export default function CheckoutPage() {
                         <input
                           type="radio"
                           name="payment"
-                          checked={paymentMethodId === String(card._id)}
-                          onChange={() => setPaymentMethodId(String(card._id))}
+                          checked={paymentMethodId === String(method._id)}
+                          onChange={() => setPaymentMethodId(String(method._id))}
                           className="accent-primary-500"
                         />
-                        <CreditCard className="w-4 h-4 text-text-secondary" />
+                        {isUpi ? (
+                          <Smartphone className="w-4 h-4 text-text-secondary" />
+                        ) : (
+                          <CreditCard className="w-4 h-4 text-text-secondary" />
+                        )}
                         <span className="text-sm text-text-primary">
-                          {card.brand || "Card"} &bull;&bull;&bull;&bull; {card.last4}
+                          {isUpi ? method.upiId : `${method.brand || "Card"} \u2022\u2022\u2022\u2022 ${method.last4}`}
                         </span>
                         <span className="text-xs text-text-muted ml-auto">
-                          {card.expiry}
+                          {isUpi ? "UPI" : method.expiry}
                           {isDefault && " · Default"}
                         </span>
                       </label>

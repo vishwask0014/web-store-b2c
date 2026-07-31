@@ -7,7 +7,7 @@ import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import DashboardLayout from "@/app/components/common/dashboardLayout";
 import ShopLayout from "@/app/components/common/ShopLayout";
-import { CreditCard, MapPin, Trash2, Plus, Star, User as UserIcon, Check } from "lucide-react";
+import { CreditCard, MapPin, Trash2, Plus, Star, User as UserIcon, Check, Smartphone } from "lucide-react";
 
 function ProfileContent() {
   const { user } = useAuth();
@@ -33,10 +33,12 @@ function ProfileContent() {
   const [location, setLocation] = useState({});
 
   const [showCardForm, setShowCardForm] = useState(false);
+  const [methodType, setMethodType] = useState("card");
   const [cardNumber, setCardNumber] = useState("");
   const [holderName, setHolderName] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
+  const [upiId, setUpiId] = useState("");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -56,7 +58,9 @@ function ProfileContent() {
   };
 
   useEffect(() => {
-    fetchProfile();
+    if (uid) {
+      void Promise.resolve().then(fetchProfile);
+    }
   }, [uid]);
 
   const saveProfile = async () => {
@@ -128,16 +132,49 @@ function ProfileContent() {
     }
   };
 
-  const removeCard = async (cardId) => {
+  const addUpi = async () => {
+    setError("");
+    setSuccess("");
+    if (!upiId.trim()) {
+      setError("UPI ID is required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid,
+          addUpi: { upiId, holderName: holderName.trim() || "" },
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      setUpiId("");
+      setHolderName("");
+      setShowCardForm(false);
+      setSuccess("UPI ID added.");
+      fetchProfile();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removePaymentMethod = async (methodId) => {
     setError("");
     setSuccess("");
     const res = await fetch("/api/users", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, removeCard: cardId }),
+      body: JSON.stringify({ uid, removePaymentMethod: methodId }),
     });
     if (res.ok) {
-      setSuccess("Card removed.");
+      setSuccess("Payment method removed.");
       fetchProfile();
     }
   };
@@ -260,71 +297,128 @@ function ProfileContent() {
           </div>
           <Button size="sm" className="gap-2 w-fit" onPress={() => setShowCardForm(!showCardForm)}>
             <Plus className="w-4 h-4" />
-            {showCardForm ? "Cancel" : "Add Card"}
+            {showCardForm ? "Cancel" : "Add Payment Method"}
           </Button>
         </div>
 
         {showCardForm && (
           <div className="mb-4 p-4 rounded-xl border border-border-default bg-bg-muted">
             <div className="grid gap-3 max-w-md">
-              <div className="grid gap-1">
-                <Label htmlFor={cardNumId} className="text-sm text-text-secondary">Card Number</Label>
-                <Input
-                  id={cardNumId}
-                  placeholder="1234 5678 9012 3456"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                  inputMode="numeric"
-                />
+              <div className="flex p-1 rounded-xl bg-bg-primary border border-border-default w-fit">
+                <button
+                  onClick={() => setMethodType("card")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    methodType === "card" ? "bg-primary-500/15 text-primary-400" : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" /> Card
+                </button>
+                <button
+                  onClick={() => setMethodType("upi")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    methodType === "upi" ? "bg-primary-500/15 text-primary-400" : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" /> UPI
+                </button>
               </div>
-              <div className="grid gap-1">
-                <Label htmlFor={holderId} className="text-sm text-text-secondary">Cardholder Name</Label>
-                <Input id={holderId} placeholder="Name on card" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1">
-                  <Label htmlFor={expiryId} className="text-sm text-text-secondary">Expiry (MM/YY)</Label>
-                  <Input id={expiryId} placeholder="09/28" value={expiry} onChange={(e) => setExpiry(formatExpiry(e.target.value))} inputMode="numeric" />
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor={cvvId} className="text-sm text-text-secondary">CVV</Label>
-                  <Input id={cvvId} placeholder="123" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" />
-                </div>
-              </div>
-              <p className="text-xs text-text-muted">
-                CVV is used for verification only and is never stored. Card numbers are stored masked (last 4 digits).
-              </p>
-              <Button onPress={addCard} isDisabled={saving}>
-                {saving ? "Adding..." : "Add Card"}
-              </Button>
+
+              {methodType === "card" ? (
+                <>
+                  <div className="grid gap-1">
+                    <Label htmlFor={cardNumId} className="text-sm text-text-secondary">Card Number</Label>
+                    <Input
+                      id={cardNumId}
+                      placeholder="1234 5678 9012 3456"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor={holderId} className="text-sm text-text-secondary">Cardholder Name</Label>
+                    <Input id={holderId} placeholder="Name on card" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1">
+                      <Label htmlFor={expiryId} className="text-sm text-text-secondary">Expiry (MM/YY)</Label>
+                      <Input id={expiryId} placeholder="09/28" value={expiry} onChange={(e) => setExpiry(formatExpiry(e.target.value))} inputMode="numeric" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor={cvvId} className="text-sm text-text-secondary">CVV</Label>
+                      <Input id={cvvId} placeholder="123" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    CVV is used for verification only and is never stored. Card numbers are stored masked (last 4 digits).
+                  </p>
+                  <Button onPress={addCard} isDisabled={saving}>
+                    {saving ? "Adding..." : "Add Card"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-1">
+                    <Label className="text-sm text-text-secondary">UPI ID</Label>
+                    <Input
+                      placeholder="yourname@upi"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor={holderId} className="text-sm text-text-secondary">Name (optional)</Label>
+                    <Input id={holderId} placeholder="Name linked to UPI" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    Pay directly from your bank account at checkout using your UPI ID.
+                  </p>
+                  <Button onPress={addUpi} isDisabled={saving}>
+                    {saving ? "Adding..." : "Add UPI"}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
 
         {(profile?.paymentMethods || []).length === 0 ? (
-          <p className="text-sm text-text-muted">No payment methods yet. Add a credit or debit card to get started.</p>
+          <p className="text-sm text-text-muted">No payment methods yet. Add a card or UPI ID to get started.</p>
         ) : (
           <div className="grid gap-3">
-            {profile.paymentMethods.map((card) => {
-              const isDefault = profile.defaultPaymentMethod === String(card._id);
+            {profile.paymentMethods.map((method) => {
+              const isDefault = profile.defaultPaymentMethod === String(method._id);
+              const isUpi = method.type === "upi";
               return (
                 <div
-                  key={card._id}
+                  key={method._id}
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border ${
                     isDefault ? "border-primary-500/50 bg-primary-500/5" : "border-border-default bg-bg-muted"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-primary-500/15 flex items-center justify-center text-primary-400">
-                      <CreditCard className="w-5 h-5" />
+                      {isUpi ? <Smartphone className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-text-primary">
-                        {card.brand || "Card"} &bull;&bull;&bull;&bull; {card.last4}
-                      </p>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {card.holderName} &middot; Expires {card.expiry}
-                      </p>
+                      {isUpi ? (
+                        <>
+                          <p className="font-medium text-sm text-text-primary">{method.upiId}</p>
+                          {method.holderName && (
+                            <p className="text-xs text-text-muted mt-0.5">{method.holderName} &middot; UPI</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium text-sm text-text-primary">
+                            {method.brand || "Card"} &bull;&bull;&bull;&bull; {method.last4}
+                          </p>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            {method.holderName} &middot; Expires {method.expiry}
+                          </p>
+                        </>
+                      )}
                     </div>
                     {isDefault && (
                       <span className="flex items-center gap-1 text-xs text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full">
@@ -335,16 +429,16 @@ function ProfileContent() {
                   <div className="flex items-center gap-2 shrink-0">
                     {!isDefault && (
                       <button
-                        onClick={() => setDefaultCard(card._id)}
+                        onClick={() => setDefaultCard(method._id)}
                         className="text-xs text-primary-400 hover:text-primary-500 font-medium px-2 py-1.5 rounded-lg hover:bg-primary-500/10 transition-colors"
                       >
                         Set default
                       </button>
                     )}
                     <button
-                      onClick={() => removeCard(card._id)}
+                      onClick={() => removePaymentMethod(method._id)}
                       className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                      title="Remove card"
+                      title="Remove payment method"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

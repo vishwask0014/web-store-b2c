@@ -40,6 +40,8 @@ const OrderSchema = new Schema(
     currency: { type: String, default: "USD", uppercase: true },
     deliveryLocation: { type: LocationSchema, default: () => ({}) },
     paymentMethod: {
+      type: { type: String, default: "card", enum: ["card", "upi"] },
+      upiId: { type: String, default: "" },
       brand: { type: String, default: "" },
       last4: { type: String, default: "" },
       holderName: { type: String, default: "" },

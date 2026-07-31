@@ -13,6 +13,8 @@ const LocationSchema = new Schema(
 
 const PaymentMethodSchema = new Schema(
   {
+    type: { type: String, default: "card", enum: ["card", "upi"] },
+    upiId: { type: String, default: "" },
     brand: { type: String, default: "" },
     last4: { type: String, default: "" },
     holderName: { type: String, default: "" },

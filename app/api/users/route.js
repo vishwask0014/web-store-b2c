@@ -105,14 +105,22 @@ export async function PUT(req) {
       if (!/^\d{13,19}$/.test(digits)) {
         return NextResponse.json({ error: "Enter a valid card number (13–19 digits)." }, { status: 400 });
       }
-      if (!/^\d{2}\s*\/\s*\d{2}$/.test(expiry || "")) {
+      const expiryDigits = (expiry || "").replace(/\s+/g, "");
+      if (!/^\d{2}\/\d{2}$/.test(expiryDigits)) {
         return NextResponse.json({ error: "Enter a valid expiry (MM/YY)." }, { status: 400 });
       }
+      const [mm, yy] = expiryDigits.split("/").map(Number);
+      const now = new Date();
+      const thisYear = Number(String(now.getFullYear()).slice(-2));
+      if (yy < thisYear || (yy === thisYear && mm < now.getMonth() + 1)) {
+        return NextResponse.json({ error: "That card has expired." }, { status: 400 });
+      }
       const card = {
+        type: "card",
         brand: getCardBrand(digits),
         last4: digits.slice(-4),
         holderName: holderName || "",
-        expiry: expiry.replace(/\s+/g, ""),
+        expiry: expiryDigits,
       };
       user.paymentMethods.push(card);
       if (!user.defaultPaymentMethod) {
@@ -121,8 +129,26 @@ export async function PUT(req) {
       delete updates.addCard;
     }
 
-    if (updates.removeCard) {
-      const removedId = String(updates.removeCard);
+    if (updates.addUpi) {
+      const { upiId, holderName } = updates.addUpi;
+      const normalizedUpi = (upiId || "").trim().toLowerCase();
+      if (!/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/.test(normalizedUpi)) {
+        return NextResponse.json({ error: "Enter a valid UPI ID (e.g. name@upi)." }, { status: 400 });
+      }
+      const upi = {
+        type: "upi",
+        upiId: normalizedUpi,
+        holderName: holderName || "",
+      };
+      user.paymentMethods.push(upi);
+      if (!user.defaultPaymentMethod) {
+        user.defaultPaymentMethod = String(upi._id);
+      }
+      delete updates.addUpi;
+    }
+
+    if (updates.removeCard || updates.removePaymentMethod) {
+      const removedId = String(updates.removeCard || updates.removePaymentMethod);
       const wasDefault = user.defaultPaymentMethod === removedId;
       user.paymentMethods = user.paymentMethods.filter((c) => String(c._id) !== removedId);
       if (wasDefault) {
@@ -131,6 +157,7 @@ export async function PUT(req) {
           : "";
       }
       delete updates.removeCard;
+      delete updates.removePaymentMethod;
     }
 
     if (updates.defaultPaymentMethod) {
