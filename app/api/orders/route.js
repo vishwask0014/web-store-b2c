@@ -7,6 +7,7 @@ import User from "@/app/models/User";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
+import { createNotification } from "@/app/lib/notify";
 
 export async function GET(req) {
   try {
@@ -137,6 +138,30 @@ export async function POST(req) {
 
     cart.items = [];
     await cart.save();
+
+    const storeIds = [...new Set(items.map((i) => i.storeId))];
+    const stores = await Store.find({ uniqueStoreId: { $in: storeIds } });
+    const owners = {};
+    for (const store of stores) {
+      if (!owners[store.ownerId]) owners[store.ownerId] = [];
+      owners[store.ownerId].push(store.name);
+    }
+    for (const [ownerId, storeNames] of Object.entries(owners)) {
+      await createNotification({
+        userId: ownerId,
+        type: "order_new",
+        title: "New order received",
+        message: `Order #${order.orderId} includes items from ${storeNames.join(", ")}.`,
+        link: "/dashboard/orders",
+      });
+    }
+    await createNotification({
+      userId,
+      type: "order_new",
+      title: "Order placed",
+      message: `Your order #${order.orderId} was placed successfully.`,
+      link: "/orders",
+    });
 
     return NextResponse.json(order, { status: 201 });
   } catch (err) {

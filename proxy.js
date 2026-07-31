@@ -56,5 +56,6 @@ export const config = {
     "/api/cart/:path*",
     "/api/orders/:path*",
     "/api/users/:path*",
+    "/api/notifications/:path*",
   ],
 };

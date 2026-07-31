@@ -4,6 +4,7 @@ import Store from "@/app/models/Store";
 import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
+import { createNotification } from "@/app/lib/notify";
 
 const VALID_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
 
@@ -68,6 +69,14 @@ export async function PUT(req, { params }) {
       }
       order.status = body.status;
       await order.save();
+
+      await createNotification({
+        userId: String(order.userId),
+        type: "order_status",
+        title: "Order updated",
+        message: `Your order #${order.orderId} is now ${body.status}.`,
+        link: "/orders",
+      });
     }
 
     return NextResponse.json(order);
