@@ -4,12 +4,15 @@ import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { auth } from "@/app/lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import useAuthStore from "@/app/stores/authStore";
 
 export default function SignIn() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirect = searchParams.get("redirect") || "/dashboard";
     const nameId = useId();
     const emailId = useId();
     const passwordId = useId();
@@ -27,23 +30,10 @@ export default function SignIn() {
             const cred = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(cred.user, { displayName: name });
 
-            const res = await fetch("/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    uid: cred.user.uid,
-                    name,
-                    email,
-                    role: "customer",
-                }),
-            });
+            const idToken = await cred.user.getIdToken();
+            await useAuthStore.getState().login(idToken, name);
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error);
-            }
-
-            router.push("/dashboard");
+            router.replace(redirect);
         } catch (err) {
             setError(err.message);
         } finally {

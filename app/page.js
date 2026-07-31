@@ -1,4 +1,5 @@
 import { Button } from "@/components/tailgrids/core/button";
+import Logo from "@/app/components/common/Logo";
 import {
   Store,
   Package,
@@ -119,14 +120,15 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-border-default bg-bg-primary/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500 font-bold text-text-primary">
-              ▲
-            </div>
-            <span className="text-lg font-semibold text-text-primary">
-              Marketplace
-            </span>
+            <Logo />
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-text-secondary md:flex">
+            <a href="/products" className="transition-colors hover:text-text-primary">
+              Products
+            </a>
+            <a href="/stores" className="transition-colors hover:text-text-primary">
+              Stores
+            </a>
             <a
               href="#features"
               className="transition-colors hover:text-text-primary"
@@ -372,15 +374,13 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500 font-bold text-text-primary">
-                ▲
-              </div>
+              <Logo showText={false} />
               <span className="text-sm font-semibold text-text-primary">
-                Marketplace
+                B2C Store
               </span>
             </div>
             <p className="text-sm text-text-muted">
-              &copy; {new Date().getFullYear()} Marketplace. All rights reserved.
+              &copy; {new Date().getFullYear()} B2C Store. All rights reserved.
             </p>
           </div>
         </div>

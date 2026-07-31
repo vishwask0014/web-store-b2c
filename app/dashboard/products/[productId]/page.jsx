@@ -5,9 +5,12 @@ import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useParams, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
-import { Package, Wrench, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2 } from "lucide-react";
+
+const MAX_SERVICES = 7;
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -21,29 +24,71 @@ export default function ProductDetailPage() {
   const svcDescId = useId();
 
   const [product, setProduct] = useState(null);
-  const [services, setServices] = useState([]);
+  const [pool, setPool] = useState([]);
   const [store, setStore] = useState(null);
-  const [showSvcForm, setShowSvcForm] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [svcName, setSvcName] = useState("");
   const [svcCharges, setSvcCharges] = useState("");
   const [svcDescription, setSvcDescription] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const load = async () => {
     if (!storeId || !productId) return;
-    fetch(`/api/stores/${storeId}/products/${productId}`)
-      .then((r) => r.json())
-      .then(setProduct);
-    fetch(`/api/stores/${storeId}/products/${productId}/services`)
-      .then((r) => r.json())
-      .then(setServices);
-    fetch(`/api/stores/${storeId}`)
-      .then((r) => r.json())
-      .then(setStore);
+    const [prod, svcs, str] = await Promise.all([
+      fetch(`/api/stores/${storeId}/products/${productId}`).then((r) => r.json()),
+      fetch(`/api/stores/${storeId}/services`).then((r) => r.json()),
+      fetch(`/api/stores/${storeId}`).then((r) => r.json()),
+    ]);
+    setProduct(prod);
+    setPool(svcs);
+    setStore(str);
+  };
+
+  useEffect(() => {
+    load();
   }, [storeId, productId]);
 
-  const handleAddService = async () => {
+  const linkedIds = product?.services?.map((s) => s.serviceId) || [];
+  const remaining = MAX_SERVICES - linkedIds.length;
+  const availablePool = pool.filter((s) => !linkedIds.includes(s._id));
+
+  const handleLinkServices = async () => {
+    setError("");
+    if (selectedServices.length === 0) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/stores/${storeId}/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ services: [...linkedIds, ...selectedServices] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSelectedServices([]);
+      setShowLinkForm(false);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlinkService = async (serviceId) => {
+    const res = await fetch(`/api/stores/${storeId}/products/${productId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        services: linkedIds.filter((id) => id !== serviceId),
+      }),
+    });
+    if (res.ok) load();
+  };
+
+  const handleCreateAndLink = async () => {
     setError("");
     if (!svcName.trim() || !svcCharges) {
       setError("Service name and charges are required.");
@@ -51,7 +96,7 @@ export default function ProductDetailPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/stores/${storeId}/products/${productId}/services`, {
+      const res = await fetch(`/api/stores/${storeId}/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,12 +107,18 @@ export default function ProductDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      const linkRes = await fetch(`/api/stores/${storeId}/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ services: [...linkedIds, data._id] }),
+      });
+      const linkData = await linkRes.json();
+      if (!linkRes.ok) throw new Error(linkData.error);
       setSvcName("");
       setSvcCharges("");
       setSvcDescription("");
-      setShowSvcForm(false);
-      const updated = await fetch(`/api/stores/${storeId}/products/${productId}/services`).then((r) => r.json());
-      setServices(updated);
+      setShowCreateForm(false);
+      load();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -75,11 +126,10 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleDeleteService = async (serviceId) => {
-    const res = await fetch(`/api/services/${serviceId}`, { method: "DELETE" });
-    if (res.ok) {
-      setServices((prev) => prev.filter((s) => s._id !== serviceId));
-    }
+  const toggleService = (id) => {
+    setSelectedServices((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
   };
 
   if (!product) {
@@ -90,14 +140,12 @@ export default function ProductDetailPage() {
     );
   }
 
-  const remaining = store ? store.serviceLimit - services.length : 0;
-
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div>
           <div className="flex items-center gap-2 text-sm text-text-muted mb-1 flex-wrap">
-            <a href="/dashboard/products" className="hover:text-primary-400 text-text-muted">Products</a>
+            <Link href="/dashboard/products" className="hover:text-primary-400 text-text-muted">Products</Link>
             <span>/</span>
             <span className="text-text-primary">{product.name}</span>
           </div>
@@ -122,25 +170,55 @@ export default function ProductDetailPage() {
             <div className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-text-secondary" />
               <h2 className="text-lg font-semibold text-text-primary">Services</h2>
-              {store && (
-                <span className="text-xs text-text-muted">
-                  ({services.length}/{store.serviceLimit} used)
-                </span>
-              )}
+              <span className="text-xs text-text-muted">
+                ({linkedIds.length}/{MAX_SERVICES} linked)
+              </span>
             </div>
-            <Button size="sm" className="gap-2 w-fit" onPress={() => setShowSvcForm(!showSvcForm)} isDisabled={remaining <= 0 && !showSvcForm}>
-              <Plus className="w-4 h-4" />
-              {showSvcForm ? "Cancel" : "Add Service"}
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" className="gap-2 w-fit" onPress={() => setShowLinkForm(!showLinkForm)} isDisabled={remaining <= 0 || availablePool.length === 0}>
+                <Link2 className="w-4 h-4" />
+                {showLinkForm ? "Cancel" : "Link from Store Services"}
+              </Button>
+              <Button size="sm" variant="secondary" className="gap-2 w-fit" onPress={() => setShowCreateForm(!showCreateForm)} isDisabled={remaining <= 0}>
+                <Plus className="w-4 h-4" />
+                {showCreateForm ? "Cancel" : "New Service"}
+              </Button>
+            </div>
           </div>
 
-          {remaining <= 0 && !showSvcForm && (
+          {remaining <= 0 && (
             <p className="text-xs text-warning mb-3">
-              Service limit reached. Contact <strong>b2cstore.support@gmail.com</strong> to increase your limit.
+              You can link at most {MAX_SERVICES} services to a product. Unlink one to add more.
             </p>
           )}
 
-          {showSvcForm && (
+          {showLinkForm && (
+            <div className="mb-4 p-4 rounded-xl border border-border-default bg-bg-muted">
+              <p className="text-sm text-text-secondary mb-3">
+                Select services from your store pool to link to this product ({availablePool.length} available):
+              </p>
+              <div className="grid gap-2 mb-4">
+                {availablePool.map((s) => (
+                  <label key={s._id} className="flex items-center gap-3 p-3 rounded-xl border border-border-default bg-bg-surface cursor-pointer hover:border-primary-500/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.includes(s._id)}
+                      onChange={() => toggleService(s._id)}
+                      className="accent-primary-500 w-4 h-4"
+                    />
+                    <span className="text-sm text-text-primary">{s.name}</span>
+                    <span className="text-xs text-text-muted ml-auto">${s.charges}</span>
+                  </label>
+                ))}
+              </div>
+              {error && <p className="text-sm text-danger mb-3">{error}</p>}
+              <Button onPress={handleLinkServices} isDisabled={loading || selectedServices.length === 0}>
+                {loading ? "Saving..." : `Link ${selectedServices.length} Service${selectedServices.length === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          )}
+
+          {showCreateForm && (
             <div className="mb-4 p-4 rounded-xl border border-border-default bg-bg-muted">
               <div className="grid gap-3 max-w-md">
                 <div className="grid gap-1">
@@ -162,28 +240,29 @@ export default function ProductDetailPage() {
                   />
                 </div>
                 {error && <p className="text-sm text-danger">{error}</p>}
-                <Button onPress={handleAddService} isDisabled={loading}>
-                  {loading ? "Adding..." : "Add Service"}
+                <Button onPress={handleCreateAndLink} isDisabled={loading}>
+                  {loading ? "Adding..." : "Create & Link Service"}
                 </Button>
               </div>
             </div>
           )}
 
-          {services.length === 0 ? (
-            <p className="text-sm text-text-muted">No services added to this product yet.</p>
+          {linkedIds.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No services linked to this product yet. Link services from your store or create a new one.
+            </p>
           ) : (
             <div className="grid gap-3">
-              {services.map((svc) => (
-                <div key={svc._id} className="flex items-center justify-between p-4 rounded-xl border border-border-default bg-bg-muted">
+              {product.services.map((svc) => (
+                <div key={svc.serviceId} className="flex items-center justify-between p-4 rounded-xl border border-border-default bg-bg-muted">
                   <div>
                     <p className="font-medium text-sm text-text-primary">{svc.name}</p>
-                    <p className="text-xs text-text-muted mt-0.5">
-                      ${svc.charges}{svc.description ? ` — ${svc.description}` : ""}
-                    </p>
+                    <p className="text-xs text-text-muted mt-0.5">${svc.charges}</p>
                   </div>
                   <button
-                    onClick={() => handleDeleteService(svc._id)}
+                    onClick={() => handleUnlinkService(svc.serviceId)}
                     className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                    title="Unlink service"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

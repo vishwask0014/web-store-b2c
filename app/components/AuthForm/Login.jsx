@@ -4,13 +4,16 @@ import { auth } from "@/app/lib/firebase";
 import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import useAuthStore from "@/app/stores/authStore";
 import ForgotPassword from "./ForgotPassword";
 
 export default function Login() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirect = searchParams.get("redirect") || "/dashboard";
     const id = useId();
     const passwordId = useId();
     const [email, setEmail] = useState("");
@@ -22,8 +25,10 @@ export default function Login() {
         setError("");
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            router.push("/dashboard");
+            const cred = await signInWithEmailAndPassword(auth, email, password);
+            const idToken = await cred.user.getIdToken();
+            await useAuthStore.getState().login(idToken);
+            router.replace(redirect);
         } catch (err) {
             setError(err.message);
         } finally {

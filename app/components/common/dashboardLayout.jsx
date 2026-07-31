@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/providers/AuthProvider";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function DashboardLayout({ children }) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const router = useRouter();
+    const { userType, loading } = useAuth();
+
+    useEffect(() => {
+        if (!loading && userType === "customer") {
+            router.replace("/shop");
+        }
+    }, [userType, loading, router]);
 
     return (
         <ProtectedRoute>

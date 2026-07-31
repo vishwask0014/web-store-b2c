@@ -6,7 +6,8 @@ import { NextResponse } from "next/server";
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const service = await Service.findOne({ _id: params.serviceId });
+    const { serviceId } = await params;
+    const service = await Service.findOne({ _id: serviceId });
     if (!service) return NextResponse.json({ error: "Service not found" }, { status: 404 });
     return NextResponse.json(service);
   } catch (err) {
@@ -17,8 +18,9 @@ export async function GET(req, { params }) {
 export async function PUT(req, { params }) {
   try {
     await connectDB();
+    const { serviceId } = await params;
     const body = await req.json();
-    const existing = await Service.findById(params.serviceId);
+    const existing = await Service.findById(serviceId);
     if (!existing) return NextResponse.json({ error: "Service not found" }, { status: 404 });
 
     if (body.name && body.name.toLowerCase() !== existing.name.toLowerCase()) {
@@ -30,7 +32,7 @@ export async function PUT(req, { params }) {
 
       const duplicate = await Service.findOne({
         storeId: { $in: ownerStoreIds },
-        _id: { $ne: params.serviceId },
+        _id: { $ne: serviceId },
         name: { $regex: `^${body.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" },
       });
 
@@ -52,7 +54,7 @@ export async function PUT(req, { params }) {
       }
     }
 
-    const service = await Service.findByIdAndUpdate(params.serviceId, body, {
+    const service = await Service.findByIdAndUpdate(serviceId, body, {
       new: true,
       runValidators: true,
     });
@@ -66,7 +68,8 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await connectDB();
-    const service = await Service.findByIdAndDelete(params.serviceId);
+    const { serviceId } = await params;
+    const service = await Service.findByIdAndDelete(serviceId);
     if (!service) return NextResponse.json({ error: "Service not found" }, { status: 404 });
     return NextResponse.json({ message: "Service deleted" });
   } catch (err) {

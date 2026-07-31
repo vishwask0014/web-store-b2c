@@ -3,6 +3,7 @@
 import { useAuth } from "@/app/providers/AuthProvider";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import Logo from "./Logo";
 import {
     Home,
     User,
@@ -12,6 +13,7 @@ import {
     Shield,
     Settings,
     X,
+    ShoppingBag,
 } from "lucide-react";
 
 const ROLE_BADGE = {
@@ -26,6 +28,7 @@ const ICONS = {
     user: User,
     store: Store,
     product: Package,
+    orders: ShoppingBag,
     shield: Shield,
     settings: Settings,
 };
@@ -41,10 +44,16 @@ export default function Sidebar({ mobileOpen, onClose }) {
             name: 'Dashboard',
             slug: 'dashboard',
             isChild: true,
-            subMenu: [
-                { name: 'Store', slug: 'store', icon: 'store' },
-                { name: 'Products', slug: 'products', icon: 'product' },
-            ]
+            subMenu: userType === "customer"
+                ? [
+                    { name: 'Shop', slug: 'shop', icon: 'store', href: '/shop' },
+                    { name: 'Cart', slug: 'cart', icon: 'product', href: '/cart' },
+                ]
+                : [
+                    { name: 'Store', slug: 'store', icon: 'store' },
+                    { name: 'Products', slug: 'products', icon: 'product' },
+                    { name: 'Orders', slug: 'orders', icon: 'orders' },
+                ],
         },
         {
             icons: 'shield',
@@ -81,20 +90,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
                 }`}
             >
                 <div className="px-6 py-6 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center font-bold text-white">
-                                ▲
-                            </div>
-                            <span className="text-lg font-medium text-text-primary/80">Your Brand</span>
+                        <div className="flex items-center justify-between">
+                            <Logo />
+                            <button
+                                onClick={onClose}
+                                className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/5"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/5"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
                     {userType && (
                         <div className={`inline-flex self-start items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-medium ${ROLE_BADGE[userType] || ROLE_BADGE.customer}`}>
                             {userType.charAt(0).toUpperCase() + userType.slice(1)}
@@ -110,6 +114,19 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
                         return (
                             <div key={item.slug}>
+                                {!item.isChild ? (
+                                    <a
+                                        href={`/${item.slug}`}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                                        ${isActive
+                                            ? "bg-primary-500/15 text-primary-400"
+                                            : "text-text-secondary/60 hover:bg-white/5 hover:text-text-primary"
+                                        }`}
+                                    >
+                                        <Icon className="w-4 h-4 shrink-0" />
+                                        <span className="flex-1 text-left">{item.name}</span>
+                                    </a>
+                                ) : (
                                 <button
                                     onClick={() =>
                                         item.isChild
@@ -130,6 +147,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
                                         />
                                     )}
                                 </button>
+                                )}
 
                                 {item.isChild && isOpen && (
                                     <div className="ml-4 pl-3 border-l border-border-default/30 mt-1 flex flex-col gap-1">
@@ -139,7 +157,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
                                             return (
                                                 <a
                                                     key={sub.slug}
-                                                    href={`/${item.slug}/${sub.slug}`}
+                                                    href={sub.href || `/${item.slug}/${sub.slug}`}
                                                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
                                                         ${subActive
                                                             ? "bg-primary-500/15 text-primary-400"

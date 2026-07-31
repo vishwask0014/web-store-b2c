@@ -2,8 +2,9 @@ import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 
 export const metadata = {
-  title: "Marketplace — List Products & Services",
-  description: "A marketplace for sellers and service providers to list products, services, and set their own charges.",
+  title: "B2C Store — Buy Products & Services from Local Stores",
+  description:
+    "B2C Store is a marketplace where local sellers list products and services, and customers browse, shop, and pay.",
 };
 
 export default function RootLayout({ children }) {

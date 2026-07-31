@@ -6,9 +6,10 @@ import { NextResponse } from "next/server";
 export async function GET(req, { params }) {
   try {
     await connectDB();
+    const { storeId, productId } = await params;
     const services = await Service.find({
-      productId: params.productId,
-      storeId: params.storeId,
+      productId,
+      storeId,
     }).sort({ createdAt: -1 });
     return NextResponse.json(services);
   } catch (err) {
@@ -19,7 +20,8 @@ export async function GET(req, { params }) {
 export async function POST(req, { params }) {
   try {
     await connectDB();
-    const store = await Store.findOne({ uniqueStoreId: params.storeId });
+    const { storeId, productId } = await params;
+    const store = await Store.findOne({ uniqueStoreId: storeId });
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
     if (store.disabled) {
@@ -29,7 +31,7 @@ export async function POST(req, { params }) {
       );
     }
 
-    const serviceCount = await Service.countDocuments({ storeId: params.storeId });
+    const serviceCount = await Service.countDocuments({ storeId });
     if (serviceCount >= store.serviceLimit) {
       return NextResponse.json(
         {
@@ -54,7 +56,7 @@ export async function POST(req, { params }) {
       const disabledCount = ownerStores.filter((s) => s.disabled).length;
       if (disabledCount < ownerStores.length - 1) {
         await Store.findOneAndUpdate(
-          { uniqueStoreId: params.storeId },
+          { uniqueStoreId: storeId },
           {
             disabled: true,
             disabledReason: `Duplicate service "${body.name}" — same service cannot be offered across multiple stores.`,
@@ -71,8 +73,8 @@ export async function POST(req, { params }) {
 
     const service = await Service.create({
       ...body,
-      productId: params.productId,
-      storeId: params.storeId,
+      productId,
+      storeId,
     });
     return NextResponse.json(service, { status: 201 });
   } catch (err) {

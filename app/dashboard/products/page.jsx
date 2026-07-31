@@ -25,6 +25,8 @@ export default function ProductsPage() {
   const [quantity, setQuantity] = useState("");
   const [description, setDescription] = useState("");
   const [isServiceAvailable, setIsServiceAvailable] = useState(false);
+  const [pool, setPool] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -34,6 +36,17 @@ export default function ProductsPage() {
       .then((r) => r.json())
       .then(setStores);
   }, [user]);
+
+  useEffect(() => {
+    if (!selectedStore) {
+      setPool([]);
+      setSelectedServices([]);
+      return;
+    }
+    fetch(`/api/stores/${selectedStore}/services`)
+      .then((r) => r.json())
+      .then(setPool);
+  }, [selectedStore]);
 
   const fetchProducts = async (storeId) => {
     if (!storeId) return;
@@ -63,6 +76,7 @@ export default function ProductsPage() {
           quantity: Number(quantity),
           description,
           isServiceAvailable,
+          services: selectedServices,
         }),
       });
       if (!res.ok) {
@@ -74,6 +88,7 @@ export default function ProductsPage() {
       setQuantity("");
       setDescription("");
       setIsServiceAvailable(false);
+      setSelectedServices([]);
       setShowForm(false);
       fetchProducts(selectedStore);
     } catch (err) {
@@ -157,6 +172,48 @@ export default function ProductsPage() {
                       className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 min-h-[80px]"
                     />
                   </div>
+                  <div className="grid gap-2">
+                    <Label className="text-sm text-text-secondary">
+                      Services available for this product{" "}
+                      {selectedServices.length > 0 && (
+                        <span className="text-xs text-text-muted">({selectedServices.length}/7 selected)</span>
+                      )}
+                    </Label>
+                    {pool.length === 0 ? (
+                      <p className="text-xs text-text-muted rounded-xl border border-border-default bg-bg-muted p-3">
+                        No services in this store yet. You can add services to this product after creating it.
+                      </p>
+                    ) : (
+                      <div className="rounded-xl border border-border-default bg-bg-muted p-3 grid gap-2 max-h-56 overflow-y-auto">
+                        {pool.map((s) => {
+                          const checked = selectedServices.includes(s._id);
+                          const disabled = !checked && selectedServices.length >= 7;
+                          return (
+                            <label
+                              key={s._id}
+                              className={`flex items-center gap-3 p-3 rounded-xl border bg-bg-surface cursor-pointer transition-colors ${
+                                checked ? "border-primary-500/60" : "border-border-default hover:border-primary-500/40"
+                              } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={disabled}
+                                onChange={() =>
+                                  setSelectedServices((prev) =>
+                                    checked ? prev.filter((id) => id !== s._id) : [...prev, s._id]
+                                  )
+                                }
+                                className="accent-primary-500 w-4 h-4"
+                              />
+                              <span className="text-sm text-text-primary">{s.name}</span>
+                              <span className="text-xs text-text-muted ml-auto">${s.charges}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     <Switch
                       isSelected={isServiceAvailable}
@@ -166,7 +223,7 @@ export default function ProductsPage() {
                       <div className="w-9 h-5 rounded-full bg-bg-muted group-data-[selected]:bg-primary-500 transition-colors p-0.5">
                         <div className="w-4 h-4 rounded-full bg-white shadow group-data-[selected]:translate-x-4 transition-transform" />
                       </div>
-                      Service available for this product
+                      Show &quot;Service available&quot; badge (auto-on when services are selected)
                     </Switch>
                   </div>
                   {error && <p className="text-sm text-danger">{error}</p>}
@@ -204,6 +261,12 @@ export default function ProductsPage() {
                           <span>Qty: {p.quantity}</span>
                           <span className="text-text-placeholder">|</span>
                           <span className="text-text-placeholder">ID: {p.uniqueProductId}</span>
+                          {(p.services?.length || 0) > 0 && (
+                            <>
+                              <span className="text-text-placeholder">|</span>
+                              <span className="text-primary-400">{p.services.length} service{p.services.length > 1 ? "s" : ""}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -213,6 +276,14 @@ export default function ProductsPage() {
                         className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
                       >
                         Manage Services &rarr;
+                      </a>
+                    )}
+                    {!p.isServiceAvailable && (
+                      <a
+                        href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
+                        className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
+                      >
+                        Details &rarr;
                       </a>
                     )}
                   </div>

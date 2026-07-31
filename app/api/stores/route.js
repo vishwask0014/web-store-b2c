@@ -1,5 +1,6 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Store from "@/app/models/Store";
+import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -28,6 +29,11 @@ export async function POST(req) {
 
     if (!ownerId) {
       return NextResponse.json({ error: "Owner ID is required." }, { status: 400 });
+    }
+
+    const seller = await getSellerUser(ownerId);
+    if (!seller) {
+      return sellerDenied("create stores");
     }
 
     const existingStores = await Store.find({ ownerId });

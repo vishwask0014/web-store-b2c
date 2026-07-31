@@ -1,13 +1,18 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/models/Product";
+import Service from "@/app/models/Service";
 import Store from "@/app/models/Store";
+import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+
+const MAX_SERVICES_PER_PRODUCT = 7;
 
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const products = await Product.find({ storeId: params.storeId }).sort({ createdAt: -1 });
+    const { storeId } = await params;
+    const products = await Product.find({ storeId }).sort({ createdAt: -1 });
     return NextResponse.json(products);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -17,7 +22,8 @@ export async function GET(req, { params }) {
 export async function POST(req, { params }) {
   try {
     await connectDB();
-    const store = await Store.findOne({ uniqueStoreId: params.storeId });
+    const { storeId } = await params;
+    const store = await Store.findOne({ uniqueStoreId: storeId });
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
     if (store.disabled) {
@@ -27,7 +33,37 @@ export async function POST(req, { params }) {
       );
     }
 
+    const seller = await getSellerUser(store.ownerId);
+    if (!seller) {
+      return sellerDenied("create products");
+    }
+
     const body = await req.json();
+
+    let services = [];
+    if (body.services && body.services.length > 0) {
+      if (body.services.length > MAX_SERVICES_PER_PRODUCT) {
+        return NextResponse.json(
+          { error: `A product can have at most ${MAX_SERVICES_PER_PRODUCT} services.` },
+          { status: 400 }
+        );
+      }
+      const serviceDocs = await Service.find({
+        storeId,
+        _id: { $in: body.services },
+      });
+      if (serviceDocs.length !== body.services.length) {
+        return NextResponse.json(
+          { error: "One or more selected services do not belong to this store." },
+          { status: 400 }
+        );
+      }
+      services = serviceDocs.map((s) => ({
+        serviceId: String(s._id),
+        name: s.name,
+        charges: s.charges,
+      }));
+    }
 
     const ownerStores = await Store.find({ ownerId: store.ownerId });
     const ownerStoreIds = ownerStores.map((s) => s.uniqueStoreId);
@@ -42,7 +78,7 @@ export async function POST(req, { params }) {
       const disabledCount = ownerStores.filter((s) => s.disabled).length;
       if (disabledCount < ownerStores.length - 1) {
         await Store.findOneAndUpdate(
-          { uniqueStoreId: params.storeId },
+          { uniqueStoreId: storeId },
           {
             disabled: true,
             disabledReason: `Duplicate product "${body.name}" — same product cannot be sold across multiple stores.`,
@@ -59,7 +95,9 @@ export async function POST(req, { params }) {
 
     const product = await Product.create({
       ...body,
-      storeId: params.storeId,
+      services,
+      isServiceAvailable: services.length > 0 || body.isServiceAvailable,
+      storeId,
       uniqueProductId: crypto.randomBytes(4).toString("hex").toUpperCase(),
     });
     return NextResponse.json(product, { status: 201 });

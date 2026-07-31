@@ -14,6 +14,8 @@ const ROLE_BADGE = {
 export default function UsersPage() {
     const { userType } = useAuth();
     const [users, setUsers] = useState([]);
+    const [updating, setUpdating] = useState(null);
+    const [error, setError] = useState("");
 
     useEffect(() => {
         if (userType !== "admin") return;
@@ -24,6 +26,27 @@ export default function UsersPage() {
         };
         fetchUsers();
     }, [userType]);
+
+    const handleRoleChange = async (uid, role) => {
+        setError("");
+        setUpdating(uid);
+        try {
+            const res = await fetch("/api/users", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid, role }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to update role");
+            }
+            setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, role } : u)));
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setUpdating(null);
+        }
+    };
 
     return (
         <DashboardLayout>

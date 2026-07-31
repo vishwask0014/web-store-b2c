@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const store = await Store.findOne({ uniqueStoreId: params.storeId });
+    const { storeId } = await params;
+    const store = await Store.findOne({ uniqueStoreId: storeId });
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
     return NextResponse.json(store);
   } catch (err) {
@@ -16,8 +17,9 @@ export async function GET(req, { params }) {
 export async function PUT(req, { params }) {
   try {
     await connectDB();
+    const { storeId } = await params;
     const body = await req.json();
-    const existing = await Store.findOne({ uniqueStoreId: params.storeId });
+    const existing = await Store.findOne({ uniqueStoreId: storeId });
     if (!existing) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
     if (existing.disabled && body.disabled === false) {
@@ -30,7 +32,7 @@ export async function PUT(req, { params }) {
     if (body.category && body.category.toLowerCase() !== existing.category.toLowerCase()) {
       const sameCategory = await Store.findOne({
         ownerId: existing.ownerId,
-        uniqueStoreId: { $ne: params.storeId },
+        uniqueStoreId: { $ne: storeId },
         category: { $regex: `^${body.category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" },
       });
       if (sameCategory) {
@@ -42,7 +44,7 @@ export async function PUT(req, { params }) {
     }
 
     const store = await Store.findOneAndUpdate(
-      { uniqueStoreId: params.storeId },
+      { uniqueStoreId: storeId },
       body,
       { new: true, runValidators: true }
     );
@@ -55,7 +57,8 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await connectDB();
-    const store = await Store.findOneAndDelete({ uniqueStoreId: params.storeId });
+    const { storeId } = await params;
+    const store = await Store.findOneAndDelete({ uniqueStoreId: storeId });
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
     return NextResponse.json({ message: "Store deleted" });
   } catch (err) {
