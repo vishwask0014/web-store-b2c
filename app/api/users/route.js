@@ -179,6 +179,35 @@ export async function PUT(req) {
       delete updates.location;
     }
 
+    if (updates.payout !== undefined) {
+      const p = updates.payout;
+      if (!p || !p.type) {
+        user.payout = null;
+      } else if (p.type === "upi") {
+        const normalizedUpi = (p.upiId || "").trim().toLowerCase();
+        if (!/^[a-z0-9.\-_]{2,}@[a-z]{2,}$/.test(normalizedUpi)) {
+          return NextResponse.json({ error: "Enter a valid UPI ID (e.g. name@upi)." }, { status: 400 });
+        }
+        user.payout = { type: "upi", upiId: normalizedUpi, accountHolder: p.accountHolder || "" };
+      } else {
+        if (!p.accountHolder?.trim() || !p.accountNumber?.trim() || !p.ifsc?.trim()) {
+          return NextResponse.json(
+            { error: "Account holder, account number, and IFSC are required." },
+            { status: 400 }
+          );
+        }
+        user.payout = {
+          type: "bank",
+          accountHolder: p.accountHolder.trim(),
+          accountNumber: p.accountNumber.trim(),
+          ifsc: p.ifsc.trim().toUpperCase(),
+          bankName: p.bankName?.trim() || "",
+          upiId: "",
+        };
+      }
+      delete updates.payout;
+    }
+
     const allowed = ["name", "phone", "email"];
     Object.keys(updates).forEach((key) => {
       if (allowed.includes(key)) user[key] = updates[key];

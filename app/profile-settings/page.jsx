@@ -4,11 +4,179 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { useId, useState, useEffect } from "react";
 import DashboardLayout from "@/app/components/common/dashboardLayout";
 import ShopLayout from "@/app/components/common/ShopLayout";
-import { CreditCard, MapPin, Trash2, Plus, Star, User as UserIcon, Check, Smartphone } from "lucide-react";
+import {
+  CreditCard,
+  MapPin,
+  Trash2,
+  Plus,
+  Star,
+  User as UserIcon,
+  Check,
+  Smartphone,
+  Wallet,
+  Landmark,
+} from "lucide-react";
 import { inputClass, labelClass, errorClass, successClass } from "@/app/components/AuthForm/authStyles";
 
-function ProfileContent() {
+function PayoutCard({ userType, profile, onSaved }) {
   const { user } = useAuth();
+  const uid = user?.uid;
+  const payout = profile?.payout;
+
+  const [type, setType] = useState(payout?.type || "bank");
+  const [accountHolder, setAccountHolder] = useState(payout?.accountHolder || "");
+  const [accountNumber, setAccountNumber] = useState(payout?.accountNumber || "");
+  const [ifsc, setIfsc] = useState(payout?.ifsc || "");
+  const [bankName, setBankName] = useState(payout?.bankName || "");
+  const [upiId, setUpiId] = useState(payout?.upiId || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    setType(payout?.type || "bank");
+    setAccountHolder(payout?.accountHolder || "");
+    setAccountNumber(payout?.accountNumber || "");
+    setIfsc(payout?.ifsc || "");
+    setBankName(payout?.bankName || "");
+    setUpiId(payout?.upiId || "");
+  }, [payout]);
+
+  const save = async () => {
+    setError("");
+    setSuccess("");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, payout: { type, accountHolder, accountNumber, ifsc, bankName, upiId } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess("Payout details saved.");
+      onSaved?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!["seller", "operator", "admin"].includes(userType)) return null;
+
+  return (
+    <div className="rounded-3xl border border-white/5 bg-[#18181B] p-6">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+            <Wallet className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">Payout Settings</h2>
+            <p className="text-xs text-zinc-500">Where you receive your share — {100 - 6}% of every sale</p>
+          </div>
+        </div>
+        <span className="w-fit rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-400">
+          6% platform fee
+        </span>
+      </div>
+
+      {(error || success) && (
+        <div className={error ? errorClass : successClass}>{error || success}</div>
+      )}
+
+      <div className="grid max-w-lg gap-4">
+        <div className="flex w-fit gap-1 rounded-xl border border-white/5 bg-zinc-950 p-1">
+          <button
+            onClick={() => setType("bank")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              type === "bank" ? "bg-blue-500/15 text-blue-400" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Landmark className="h-4 w-4" /> Bank account
+          </button>
+          <button
+            onClick={() => setType("upi")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              type === "upi" ? "bg-blue-500/15 text-blue-400" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Smartphone className="h-4 w-4" /> UPI
+          </button>
+        </div>
+
+        {type === "bank" ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <label className={labelClass}>Account Holder Name</label>
+                <input className={inputClass} value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <label className={labelClass}>Account Number</label>
+                <input
+                  className={inputClass}
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className={labelClass}>IFSC Code</label>
+                <input
+                  className={inputClass}
+                  value={ifsc}
+                  onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+                  placeholder="HDFC0001234"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className={labelClass}>Bank Name</label>
+                <input className={inputClass} value={bankName} onChange={(e) => setBankName(e.target.value)} />
+              </div>
+            </div>
+            {payout?.accountNumber && (
+              <p className="text-xs text-zinc-500">
+                On file: {payout.accountHolder} · ••••{payout.accountNumber.slice(-4)} ({payout.bankName || "bank"})
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="grid gap-2">
+              <label className={labelClass}>UPI ID</label>
+              <input
+                className={inputClass}
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="yourname@upi"
+              />
+            </div>
+            {payout?.upiId && (
+              <p className="text-xs text-zinc-500">On file: {payout.upiId}</p>
+            )}
+          </>
+        )}
+
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-fit rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.99] disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Payout Details"}
+        </button>
+        <p className="text-xs text-zinc-600">
+          Payouts are automatically sent when an order is marked delivered — {100 - 6}% of the order value, with 6%
+          deducted as the B2C Store platform fee.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ProfileContent() {
+  const { user, userType } = useAuth();
   const uid = user?.uid;
 
   const nameId = useId();
@@ -574,6 +742,8 @@ function ProfileContent() {
           </label>
         </div>
       </div>
+
+      <PayoutCard userType={userType} profile={profile} onSaved={fetchProfile} />
     </div>
   );
 }

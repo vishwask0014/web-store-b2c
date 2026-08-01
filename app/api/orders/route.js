@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
 import { createNotification } from "@/app/lib/notify";
+import { getRazorpay, isRazorpayConfigured, buildSettlements } from "@/app/lib/razorpay";
 
 export async function GET(req) {
   try {
@@ -45,7 +46,7 @@ export async function POST(req) {
 
     await connectDB();
     const body = await req.json();
-    const { userId, location, paymentMethodId, autoPay } = body;
+    const { userId, location, paymentMethodId, autoPay, razorpayOrderId, razorpayPaymentId, amountMinor } = body;
 
     if (!userId || userId !== session.uid) {
       return NextResponse.json({ error: "Invalid user." }, { status: 403 });
@@ -64,6 +65,21 @@ export async function POST(req) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
+    let razorpayVerified = null;
+    if (razorpayPaymentId) {
+      if (!isRazorpayConfigured()) {
+        return NextResponse.json({ error: "Razorpay is not configured." }, { status: 503 });
+      }
+      const rzp = getRazorpay();
+      const payment = await rzp.payments.fetch(razorpayPaymentId);
+      const orderOk = !razorpayOrderId || payment.order_id === razorpayOrderId;
+      const amountOk = !amountMinor || Number(payment.amount) === Number(amountMinor);
+      if (!orderOk || !amountOk || !["captured", "authorized"].includes(payment.status)) {
+        return NextResponse.json({ error: "Payment verification failed." }, { status: 400 });
+      }
+      razorpayVerified = payment;
+    }
+
     let payment = null;
     if (paymentMethodId) {
       payment = user.paymentMethods.find((c) => String(c._id) === String(paymentMethodId));
@@ -73,7 +89,7 @@ export async function POST(req) {
     } else if (user.defaultPaymentMethod) {
       payment = user.paymentMethods.find((c) => String(c._id) === String(user.defaultPaymentMethod));
     }
-    if (!payment) {
+    if (!payment && !razorpayVerified) {
       return NextResponse.json(
         { error: "No payment method on file. Add a card or UPI ID in your profile first." },
         { status: 400 }
@@ -126,23 +142,39 @@ export async function POST(req) {
       total: subtotal + serviceTotal,
       currency: "USD",
       deliveryLocation: location || user.location || {},
-      paymentMethod: {
-        type: payment.type || "card",
-        upiId: payment.upiId || "",
-        brand: payment.brand || "",
-        last4: payment.last4 || "",
-        holderName: payment.holderName || "",
-        expiry: payment.expiry || "",
-      },
+      paymentMethod: razorpayVerified
+        ? {
+            type: "razorpay",
+            brand: "Razorpay",
+            last4: razorpayVerified.card?.last4 || "",
+            holderName: user.name || "",
+            expiry: "",
+          }
+        : {
+            type: payment.type || "card",
+            upiId: payment.upiId || "",
+            brand: payment.brand || "",
+            last4: payment.last4 || "",
+            holderName: payment.holderName || "",
+            expiry: payment.expiry || "",
+          },
+      paid: Boolean(razorpayVerified),
+      razorpayOrderId: razorpayOrderId || "",
+      razorpayPaymentId: razorpayPaymentId || "",
       autoPaid: Boolean(autoPay),
       status: "pending",
     });
 
-    cart.items = [];
-    await cart.save();
-
     const storeIds = [...new Set(items.map((i) => i.storeId))];
     const stores = await Store.find({ uniqueStoreId: { $in: storeIds } });
+    order.settlements = buildSettlements(
+      order,
+      new Map(stores.map((s) => [s.uniqueStoreId, s]))
+    );
+    await order.save();
+
+    cart.items = [];
+    await cart.save();
     const owners = {};
     for (const store of stores) {
       if (!owners[store.ownerId]) owners[store.ownerId] = [];

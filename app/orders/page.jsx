@@ -95,9 +95,11 @@ export default function OrdersPage() {
                 <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted border-t border-border-default pt-3">
                   <span className="flex items-center gap-1">
                     <CreditCard className="w-3 h-3" />
-                    {o.paymentMethod?.type === "upi"
-                      ? o.paymentMethod.upiId || "UPI"
-                      : `${o.paymentMethod?.brand || "Card"} \u2022\u2022\u2022\u2022 ${o.paymentMethod?.last4 || "----"}`}
+                    {o.paymentMethod?.type === "razorpay"
+                      ? `Razorpay ${o.paid ? "· Paid" : ""}${o.paymentMethod?.last4 ? ` •••• ${o.paymentMethod.last4}` : ""}`
+                      : o.paymentMethod?.type === "upi"
+                        ? o.paymentMethod.upiId || "UPI"
+                        : `${o.paymentMethod?.brand || "Card"} \u2022\u2022\u2022\u2022 ${o.paymentMethod?.last4 || "----"}`}
                     {o.autoPaid && " · Auto-paid"}
                   </span>
                   {(o.deliveryLocation?.city || o.deliveryLocation?.address) && (

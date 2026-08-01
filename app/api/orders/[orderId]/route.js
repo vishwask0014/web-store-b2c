@@ -5,6 +5,7 @@ import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
 import { createNotification } from "@/app/lib/notify";
+import { processDeliveredPayouts } from "@/app/lib/razorpay";
 
 const VALID_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
 
@@ -68,6 +69,20 @@ export async function PUT(req, { params }) {
         );
       }
       order.status = body.status;
+
+      if (body.status === "delivered" && order.settlements?.length) {
+        const results = await processDeliveredPayouts(order);
+        const byOwner = new Map(results.map((r) => [r.ownerId, r]));
+        for (const settlement of order.settlements) {
+          const result = byOwner.get(settlement.ownerId);
+          if (!result) continue;
+          settlement.status = result.status;
+          settlement.payoutId = result.payoutId || settlement.payoutId;
+          settlement.note = result.note || settlement.note;
+          if (result.status === "initiated") settlement.paidAt = new Date().toISOString();
+        }
+      }
+
       await order.save();
 
       await createNotification({

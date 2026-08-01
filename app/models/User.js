@@ -23,6 +23,18 @@ const PaymentMethodSchema = new Schema(
   { timestamps: true }
 );
 
+const PayoutSchema = new Schema(
+  {
+    type: { type: String, default: "bank", enum: ["bank", "upi"] },
+    accountHolder: { type: String, default: "" },
+    accountNumber: { type: String, default: "" },
+    ifsc: { type: String, default: "" },
+    bankName: { type: String, default: "" },
+    upiId: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const UserSchema = new Schema(
   {
     uid: { type: String, required: true, unique: true },
@@ -34,6 +46,9 @@ const UserSchema = new Schema(
     paymentMethods: { type: [PaymentMethodSchema], default: [] },
     defaultPaymentMethod: { type: String, default: "" },
     autoPay: { type: Boolean, default: false },
+    payout: { type: PayoutSchema, default: null },
+    razorpayContactId: { type: String, default: "" },
+    razorpayFundAccountId: { type: String, default: "" },
   },
   { timestamps: true }
 );

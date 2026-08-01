@@ -26,6 +26,25 @@ const LocationSchema = new Schema(
   { _id: false }
 );
 
+const SettlementSchema = new Schema(
+  {
+    ownerId: { type: String, required: true },
+    storeIds: { type: [String], default: [] },
+    amount: { type: Number, default: 0 },
+    fee: { type: Number, default: 0 },
+    share: { type: Number, default: 0 },
+    status: {
+      type: String,
+      default: "pending",
+      enum: ["pending", "initiated", "blocked", "failed", "paid"],
+    },
+    payoutId: { type: String, default: "" },
+    paidAt: { type: String, default: "" },
+    note: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const OrderSchema = new Schema(
   {
     orderId: { type: String, required: true, unique: true, uppercase: true },
@@ -40,13 +59,17 @@ const OrderSchema = new Schema(
     currency: { type: String, default: "USD", uppercase: true },
     deliveryLocation: { type: LocationSchema, default: () => ({}) },
     paymentMethod: {
-      type: { type: String, default: "card", enum: ["card", "upi"] },
+      type: { type: String, default: "card", enum: ["card", "upi", "razorpay"] },
       upiId: { type: String, default: "" },
       brand: { type: String, default: "" },
       last4: { type: String, default: "" },
       holderName: { type: String, default: "" },
       expiry: { type: String, default: "" },
     },
+    paid: { type: Boolean, default: false },
+    razorpayOrderId: { type: String, default: "" },
+    razorpayPaymentId: { type: String, default: "" },
+    settlements: { type: [SettlementSchema], default: [] },
     autoPaid: { type: Boolean, default: false },
     status: {
       type: String,

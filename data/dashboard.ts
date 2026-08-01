@@ -191,7 +191,7 @@ export function buildWallet(orders: OrderSummary[]): WalletTotals {
   const pendingPayout = orders.filter((o) => !["delivered", "cancelled"].includes(o.status)).reduce((s, o) => s + (Number(o.total) || 0), 0);
   return {
     revenue,
-    commission: delivered * 0.1,
+    commission: delivered * 0.06,
     pendingPayout,
     withdrawals: 0,
   };
