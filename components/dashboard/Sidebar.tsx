@@ -21,6 +21,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
+  BarChart3,
   Store as StoreIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const ROLE_BADGE: Record<string, string> = {
 
 const ICONS: Record<string, typeof Home> = {
   home: Home,
+  dashboard: BarChart3,
   user: User,
   store: Store,
   product: Package,
@@ -56,15 +58,28 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
 
   const sidebarMenu = [
     {
-      icons: "home",
+      icons: "dashboard",
       name: "Dashboard",
       slug: "dashboard",
-      isChild: true,
-      subMenu: [
-        { name: "Store", slug: "store", icon: "store" },
-        { name: "Products", slug: "products", icon: "product" },
-        { name: "Orders", slug: "orders", icon: "orders" },
-      ],
+      href: "/dashboard",
+    },
+    {
+      icons: "store",
+      name: "Store",
+      slug: "store",
+      href: "/dashboard/store",
+    },
+    {
+      icons: "product",
+      name: "Products",
+      slug: "products",
+      href: "/dashboard/products",
+    },
+    {
+      icons: "orders",
+      name: "Orders",
+      slug: "orders",
+      href: "/dashboard/orders",
     },
     {
       icons: "shield",
@@ -167,8 +182,25 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
           <div className="flex flex-col gap-1">
             {sidebarMenu.map((item) => {
               const Icon = ICONS[item.icons] ?? Home;
-              const isActive = pathname?.includes(item.slug);
+              const isActive =
+                item.slug === "dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname?.includes(item.slug);
               const isOpen = openSlug === item.slug;
+
+              if (item.href) {
+                return (
+                  <Link
+                    key={item.slug}
+                    href={item.href}
+                    title={collapsed ? item.name : undefined}
+                    className={navItemClass(isActive)}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    {!collapsed && <span className="flex-1 text-left">{item.name}</span>}
+                  </Link>
+                );
+              }
 
               return (
                 <div key={item.slug}>
@@ -197,7 +229,7 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
                       >
                         {item.subMenu.map((sub) => {
                           const SubIcon = ICONS[sub.icon] ?? Home;
-                          const subActive = pathname?.includes(sub.slug);
+                          const subActive = pathname?.includes(`/${item.slug}/${sub.slug}`);
                           return (
                             <Link
                               key={sub.slug}

@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="h-screen overflow-hidden bg-zinc-950 text-zinc-100">
         <div
           className={`grid grid-cols-1 transition-[grid-template-columns] duration-300 ${
             collapsed ? "md:grid-cols-[72px_1fr]" : "md:grid-cols-[280px_1fr]"
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }) {
             onToggleCollapse={() => setCollapsed((c) => !c)}
             onExpand={() => setCollapsed(false)}
           />
-          <div className="min-h-screen pb-20 md:pb-0">
+          <div className="h-screen overflow-y-auto pb-20 md:pb-0">
             <Suspense fallback={null}>
               <TopNavbar onToggleSidebar={() => setMobileOpen((prev) => !prev)} />
             </Suspense>

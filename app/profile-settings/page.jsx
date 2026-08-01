@@ -2,12 +2,10 @@
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useId, useState, useEffect } from "react";
-import { Label } from "react-aria-components";
-import { Button } from "@/components/tailgrids/core/button";
-import { Input } from "@/components/tailgrids/core/input";
 import DashboardLayout from "@/app/components/common/dashboardLayout";
 import ShopLayout from "@/app/components/common/ShopLayout";
 import { CreditCard, MapPin, Trash2, Plus, Star, User as UserIcon, Check, Smartphone } from "lucide-react";
+import { inputClass, labelClass, errorClass, successClass } from "@/app/components/AuthForm/authStyles";
 
 function ProfileContent() {
   const { user } = useAuth();
@@ -208,127 +206,181 @@ function ProfileContent() {
   };
 
   if (loading) {
-    return (
-      <div className="text-sm text-text-muted">Loading profile...</div>
-    );
+    return <div className="text-sm text-zinc-500">Loading profile...</div>;
   }
+
+  const SectionHeader = ({ icon: Icon, title, action }) => (
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        <h2 className="text-base font-semibold text-zinc-100">{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+
+  const AddButton = () => (
+    <button
+      onClick={() => setShowCardForm(!showCardForm)}
+      className="flex w-fit items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98]"
+    >
+      <Plus className="h-4 w-4" />
+      {showCardForm ? "Cancel" : "Add Payment Method"}
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Profile</h1>
-        <p className="text-sm text-text-muted mt-1">Manage your details, location, and payment methods</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Profile</h1>
+          <p className="mt-1 text-sm text-zinc-500">Manage your details, location, and payment methods</p>
+        </div>
+        <button
+          onClick={saveProfile}
+          disabled={saving}
+          className="w-fit rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.99] disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Profile"}
+        </button>
       </div>
 
       {(error || success) && (
-        <div className={`rounded-xl p-3 text-sm ${error ? "border border-danger/30 bg-danger/5 text-danger" : "border border-success/30 bg-success/5 text-success"}`}>
-          {error || success}
-        </div>
+        <div className={error ? errorClass : successClass}>{error || success}</div>
       )}
 
-      <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <UserIcon className="w-5 h-5 text-text-secondary" />
-          <h2 className="text-lg font-semibold text-text-primary">Personal Details</h2>
-        </div>
-        <div className="grid gap-4 max-w-lg">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor={nameId} className="text-sm text-text-secondary">Full Name</Label>
-              <Input id={nameId} value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/5 bg-[#18181B] p-6">
+          <SectionHeader icon={UserIcon} title="Personal Details" />
+          <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <label htmlFor={nameId} className={labelClass}>
+                  Full Name
+                </label>
+                <input id={nameId} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor={phoneId} className={labelClass}>
+                  Phone
+                </label>
+                <input
+                  id={phoneId}
+                  className={inputClass}
+                  placeholder="+1 234 567 8900"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={phoneId} className="text-sm text-text-secondary">Phone</Label>
-              <Input id={phoneId} placeholder="+1 234 567 8900" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <label className={labelClass}>Email (login)</label>
+              <input value={profile?.email || ""} disabled className={`${inputClass} opacity-50`} />
             </div>
           </div>
-          <div className="grid gap-2">
-            <Label className="text-sm text-text-secondary">Email (login)</Label>
-            <Input value={profile?.email || ""} disabled className="opacity-60" />
+        </div>
+
+        <div className="rounded-3xl border border-white/5 bg-[#18181B] p-6">
+          <SectionHeader icon={MapPin} title="Location" />
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <label htmlFor={addrId} className={labelClass}>
+                Address
+              </label>
+              <input
+                id={addrId}
+                className={inputClass}
+                placeholder="Street address"
+                value={location.address || ""}
+                onChange={(e) => setLocation((prev) => ({ ...prev, address: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <label htmlFor={cityId} className={labelClass}>
+                  City
+                </label>
+                <input
+                  id={cityId}
+                  className={inputClass}
+                  value={location.city || ""}
+                  onChange={(e) => setLocation((prev) => ({ ...prev, city: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor={stateId} className={labelClass}>
+                  State
+                </label>
+                <input
+                  id={stateId}
+                  className={inputClass}
+                  value={location.state || ""}
+                  onChange={(e) => setLocation((prev) => ({ ...prev, state: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor={zipId} className={labelClass}>
+                  Zip / Postal Code
+                </label>
+                <input
+                  id={zipId}
+                  className={inputClass}
+                  value={location.zip || ""}
+                  onChange={(e) => setLocation((prev) => ({ ...prev, zip: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor={countryId} className={labelClass}>
+                  Country
+                </label>
+                <input
+                  id={countryId}
+                  className={inputClass}
+                  value={location.country || ""}
+                  onChange={(e) => setLocation((prev) => ({ ...prev, country: e.target.value }))}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <MapPin className="w-5 h-5 text-text-secondary" />
-          <h2 className="text-lg font-semibold text-text-primary">Location</h2>
-        </div>
-        <div className="grid gap-4 max-w-lg">
-          <div className="grid gap-2">
-            <Label htmlFor={addrId} className="text-sm text-text-secondary">Address</Label>
-            <Input
-              id={addrId}
-              placeholder="Street address"
-              value={location.address || ""}
-              onChange={(e) => setLocation((prev) => ({ ...prev, address: e.target.value }))}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor={cityId} className="text-sm text-text-secondary">City</Label>
-              <Input id={cityId} value={location.city || ""} onChange={(e) => setLocation((prev) => ({ ...prev, city: e.target.value }))} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={stateId} className="text-sm text-text-secondary">State</Label>
-              <Input id={stateId} value={location.state || ""} onChange={(e) => setLocation((prev) => ({ ...prev, state: e.target.value }))} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={zipId} className="text-sm text-text-secondary">Zip / Postal Code</Label>
-              <Input id={zipId} value={location.zip || ""} onChange={(e) => setLocation((prev) => ({ ...prev, zip: e.target.value }))} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={countryId} className="text-sm text-text-secondary">Country</Label>
-              <Input id={countryId} value={location.country || ""} onChange={(e) => setLocation((prev) => ({ ...prev, country: e.target.value }))} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Button className="w-fit" onPress={saveProfile} isDisabled={saving}>
-        {saving ? "Saving..." : "Save Profile"}
-      </Button>
-
-      <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-text-secondary" />
-            <h2 className="text-lg font-semibold text-text-primary">Payment Methods</h2>
-          </div>
-          <Button size="sm" className="gap-2 w-fit" onPress={() => setShowCardForm(!showCardForm)}>
-            <Plus className="w-4 h-4" />
-            {showCardForm ? "Cancel" : "Add Payment Method"}
-          </Button>
-        </div>
+      <div className="rounded-3xl border border-white/5 bg-[#18181B] p-6">
+        <SectionHeader icon={CreditCard} title="Payment Methods" action={<AddButton />} />
 
         {showCardForm && (
-          <div className="mb-4 p-4 rounded-xl border border-border-default bg-bg-muted">
+          <div className="mb-4 rounded-2xl border border-white/5 bg-zinc-950 p-4">
             <div className="grid gap-3 max-w-md">
-              <div className="flex p-1 rounded-xl bg-bg-primary border border-border-default w-fit">
+              <div className="flex w-fit gap-1 rounded-xl border border-white/5 bg-zinc-950 p-1">
                 <button
                   onClick={() => setMethodType("card")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    methodType === "card" ? "bg-primary-500/15 text-primary-400" : "text-text-muted hover:text-text-secondary"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    methodType === "card" ? "bg-blue-500/15 text-blue-400" : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  <CreditCard className="w-4 h-4" /> Card
+                  <CreditCard className="h-4 w-4" /> Card
                 </button>
                 <button
                   onClick={() => setMethodType("upi")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    methodType === "upi" ? "bg-primary-500/15 text-primary-400" : "text-text-muted hover:text-text-secondary"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    methodType === "upi" ? "bg-blue-500/15 text-blue-400" : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  <Smartphone className="w-4 h-4" /> UPI
+                  <Smartphone className="h-4 w-4" /> UPI
                 </button>
               </div>
 
               {methodType === "card" ? (
                 <>
                   <div className="grid gap-1">
-                    <Label htmlFor={cardNumId} className="text-sm text-text-secondary">Card Number</Label>
-                    <Input
+                    <label htmlFor={cardNumId} className={labelClass}>
+                      Card Number
+                    </label>
+                    <input
                       id={cardNumId}
+                      className={inputClass}
                       placeholder="1234 5678 9012 3456"
                       value={cardNumber}
                       onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
@@ -336,31 +388,64 @@ function ProfileContent() {
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor={holderId} className="text-sm text-text-secondary">Cardholder Name</Label>
-                    <Input id={holderId} placeholder="Name on card" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                    <label htmlFor={holderId} className={labelClass}>
+                      Cardholder Name
+                    </label>
+                    <input
+                      id={holderId}
+                      className={inputClass}
+                      placeholder="Name on card"
+                      value={holderName}
+                      onChange={(e) => setHolderName(e.target.value)}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="grid gap-1">
-                      <Label htmlFor={expiryId} className="text-sm text-text-secondary">Expiry (MM/YY)</Label>
-                      <Input id={expiryId} placeholder="09/28" value={expiry} onChange={(e) => setExpiry(formatExpiry(e.target.value))} inputMode="numeric" />
+                      <label htmlFor={expiryId} className={labelClass}>
+                        Expiry (MM/YY)
+                      </label>
+                      <input
+                        id={expiryId}
+                        className={inputClass}
+                        placeholder="09/28"
+                        value={expiry}
+                        onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                        inputMode="numeric"
+                      />
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor={cvvId} className="text-sm text-text-secondary">CVV</Label>
-                      <Input id={cvvId} placeholder="123" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" type="password" />
+                      <label htmlFor={cvvId} className={labelClass}>
+                        CVV
+                      </label>
+                      <input
+                        id={cvvId}
+                        className={inputClass}
+                        placeholder="123"
+                        value={cvv}
+                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        inputMode="numeric"
+                        type="password"
+                      />
                     </div>
                   </div>
-                  <p className="text-xs text-text-muted">
-                    CVV is used for verification only and is never stored. Card numbers are stored masked (last 4 digits).
+                  <p className="text-xs text-zinc-500">
+                    CVV is used for verification only and is never stored. Card numbers are stored masked (last 4
+                    digits).
                   </p>
-                  <Button onPress={addCard} isDisabled={saving}>
+                  <button
+                    onClick={addCard}
+                    disabled={saving}
+                    className="rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.99] disabled:opacity-50"
+                  >
                     {saving ? "Adding..." : "Add Card"}
-                  </Button>
+                  </button>
                 </>
               ) : (
                 <>
                   <div className="grid gap-1">
-                    <Label className="text-sm text-text-secondary">UPI ID</Label>
-                    <Input
+                    <label className={labelClass}>UPI ID</label>
+                    <input
+                      className={inputClass}
                       placeholder="yourname@upi"
                       value={upiId}
                       onChange={(e) => setUpiId(e.target.value)}
@@ -368,15 +453,27 @@ function ProfileContent() {
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor={holderId} className="text-sm text-text-secondary">Name (optional)</Label>
-                    <Input id={holderId} placeholder="Name linked to UPI" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                    <label htmlFor={holderId} className={labelClass}>
+                      Name (optional)
+                    </label>
+                    <input
+                      id={holderId}
+                      className={inputClass}
+                      placeholder="Name linked to UPI"
+                      value={holderName}
+                      onChange={(e) => setHolderName(e.target.value)}
+                    />
                   </div>
-                  <p className="text-xs text-text-muted">
+                  <p className="text-xs text-zinc-500">
                     Pay directly from your bank account at checkout using your UPI ID.
                   </p>
-                  <Button onPress={addUpi} isDisabled={saving}>
+                  <button
+                    onClick={addUpi}
+                    disabled={saving}
+                    className="rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.99] disabled:opacity-50"
+                  >
                     {saving ? "Adding..." : "Add UPI"}
-                  </Button>
+                  </button>
                 </>
               )}
             </div>
@@ -384,7 +481,7 @@ function ProfileContent() {
         )}
 
         {(profile?.paymentMethods || []).length === 0 ? (
-          <p className="text-sm text-text-muted">No payment methods yet. Add a card or UPI ID to get started.</p>
+          <p className="text-sm text-zinc-500">No payment methods yet. Add a card or UPI ID to get started.</p>
         ) : (
           <div className="grid gap-3">
             {profile.paymentMethods.map((method) => {
@@ -393,54 +490,56 @@ function ProfileContent() {
               return (
                 <div
                   key={method._id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border ${
-                    isDefault ? "border-primary-500/50 bg-primary-500/5" : "border-border-default bg-bg-muted"
+                  className={`flex flex-col justify-between gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${
+                    isDefault ? "border-blue-500/40 bg-blue-500/5" : "border-white/5 bg-zinc-950"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary-500/15 flex items-center justify-center text-primary-400">
-                      {isUpi ? <Smartphone className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
+                      {isUpi ? <Smartphone className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
                     </div>
                     <div>
                       {isUpi ? (
                         <>
-                          <p className="font-medium text-sm text-text-primary">{method.upiId}</p>
+                          <p className="text-sm font-medium text-zinc-100">{method.upiId}</p>
                           {method.holderName && (
-                            <p className="text-xs text-text-muted mt-0.5">{method.holderName} &middot; UPI</p>
+                            <p className="mt-0.5 text-xs text-zinc-500">
+                              {method.holderName} &middot; UPI
+                            </p>
                           )}
                         </>
                       ) : (
                         <>
-                          <p className="font-medium text-sm text-text-primary">
+                          <p className="text-sm font-medium text-zinc-100">
                             {method.brand || "Card"} &bull;&bull;&bull;&bull; {method.last4}
                           </p>
-                          <p className="text-xs text-text-muted mt-0.5">
+                          <p className="mt-0.5 text-xs text-zinc-500">
                             {method.holderName} &middot; Expires {method.expiry}
                           </p>
                         </>
                       )}
                     </div>
                     {isDefault && (
-                      <span className="flex items-center gap-1 text-xs text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full">
-                        <Star className="w-3 h-3" /> Default
+                      <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
+                        <Star className="h-3 w-3" /> Default
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2">
                     {!isDefault && (
                       <button
                         onClick={() => setDefaultCard(method._id)}
-                        className="text-xs text-primary-400 hover:text-primary-500 font-medium px-2 py-1.5 rounded-lg hover:bg-primary-500/10 transition-colors"
+                        className="rounded-lg px-2 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300"
                       >
                         Set default
                       </button>
                     )}
                     <button
                       onClick={() => removePaymentMethod(method._id)}
-                      className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
                       title="Remove payment method"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -449,26 +548,26 @@ function ProfileContent() {
           </div>
         )}
 
-        <div className="mt-5 pt-5 border-t border-border-default">
-          <label className="flex items-center gap-3 cursor-pointer">
+        <div className="mt-5 border-t border-white/5 pt-5">
+          <label className="flex cursor-pointer items-center gap-3">
             <button
               onClick={() => toggleAutoPay(!profile?.autoPay)}
-              className={`w-11 h-6 rounded-full transition-colors p-0.5 ${
-                profile?.autoPay ? "bg-primary-500" : "bg-bg-muted"
+              className={`h-6 w-11 rounded-full p-0.5 transition-colors ${
+                profile?.autoPay ? "bg-blue-500" : "bg-zinc-800"
               }`}
               aria-pressed={profile?.autoPay}
             >
               <div
-                className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
                   profile?.autoPay ? "translate-x-5" : ""
                 }`}
               />
             </button>
-            <span className="text-sm text-text-secondary">
+            <span className="text-sm text-zinc-400">
               Auto payment
               {profile?.autoPay && (
-                <span className="ml-2 text-xs text-success flex items-center gap-1">
-                  <Check className="w-3 h-3" /> On — will use your default card
+                <span className="ml-2 flex items-center gap-1 text-xs text-emerald-400">
+                  <Check className="h-3 w-3" /> On — will use your default card
                 </span>
               )}
             </span>
