@@ -1,16 +1,14 @@
 "use client";
 
-import { Button } from "@/components/tailgrids/core/button";
-import { Input } from "@/components/tailgrids/core/input";
 import { auth } from "@/app/lib/firebase";
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from "firebase/auth";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import useAuthStore from "@/app/stores/authStore";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import { motion } from "framer-motion";
+import { Phone, MessageSquareCode } from "lucide-react";
+import { headingClass, subheadingClass, labelClass, inputClass, buttonClass, errorClass } from "./authStyles";
 
 const FIREBASE_ERRORS = {
   "auth/invalid-phone-number": "Enter a valid phone number with country code (e.g. +1 555 555 5555).",
@@ -91,51 +89,65 @@ export default function PhoneLogin() {
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-semibold text-text-primary mb-2">
-        Phone Sign In
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h2 className={`${headingClass} mb-2 flex items-center gap-2.5`}>
+        {step === "phone" ? (
+          <>
+            <Phone className="h-6 w-6 text-blue-400" /> Phone Sign In
+          </>
+        ) : (
+          <>
+            <MessageSquareCode className="h-6 w-6 text-blue-400" /> Verify Code
+          </>
+        )}
       </h2>
-      <p className="text-sm text-text-secondary mb-8">
+      <p className={subheadingClass}>
         {step === "phone"
           ? "We'll text you a one-time code. No password needed."
-          : `Enter the code sent to ${phone}.`}
+          : `Enter the 6-digit code sent to ${phone}.`}
       </p>
 
       <div className="flex flex-col gap-4">
         {step === "phone" ? (
           <>
             <div className="w-full grid gap-2">
-              <Label htmlFor={nameId} className="text-sm text-text-secondary">
+              <Label htmlFor={nameId} className={labelClass}>
                 Name (first time only)
               </Label>
-              <Input
+              <input
                 id={nameId}
                 type="text"
                 placeholder="John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className={inputClass}
               />
             </div>
 
             <div className="w-full grid gap-2">
-              <Label htmlFor={phoneId} className="text-sm text-text-secondary">
+              <Label htmlFor={phoneId} className={labelClass}>
                 Phone Number
               </Label>
-              <Input
+              <input
                 id={phoneId}
                 type="tel"
                 placeholder="+91 98765 43210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                className={inputClass}
               />
             </div>
           </>
         ) : (
           <div className="w-full grid gap-2">
-            <Label htmlFor={codeId} className="text-sm text-text-secondary">
+            <Label htmlFor={codeId} className={labelClass}>
               Verification Code
             </Label>
-            <Input
+            <input
               id={codeId}
               type="text"
               inputMode="numeric"
@@ -143,30 +155,29 @@ export default function PhoneLogin() {
               placeholder="6-digit code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              className={`${inputClass} text-center text-lg tracking-[0.5em]`}
             />
           </div>
         )}
 
         <div id="recaptcha-container" />
 
-        {error && <p className="text-danger text-sm">{error}</p>}
+        {error && <p className={errorClass}>{error}</p>}
 
         {step === "otp" && (
           <button
             type="button"
             onClick={() => setStep("phone")}
-            className="text-sm text-text-secondary underline hover:text-text-primary self-start"
+            className="self-start text-sm text-zinc-500 underline transition-colors hover:text-zinc-300"
           >
             Change phone number
           </button>
         )}
 
-        <Button
-          variant="primary"
-          size="sm"
+        <button
           onClick={step === "phone" ? sendOtp : verifyOtp}
           disabled={loading}
-          className="w-full"
+          className={buttonClass}
         >
           {loading
             ? step === "phone"
@@ -175,8 +186,8 @@ export default function PhoneLogin() {
             : step === "phone"
               ? "Send OTP"
               : "Verify & Sign In"}
-        </Button>
+        </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,12 +1,11 @@
 "use client";
 
 import { auth } from "@/app/lib/firebase";
-import { Button } from "@/components/tailgrids/core/button";
 import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/tailgrids/core/dialog";
-import { Input } from "@/components/tailgrids/core/input";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import { inputClass, labelClass, errorClass, successClass } from "./authStyles";
 
 export default function ForgotPassword() {
     const id = useId();
@@ -44,52 +43,58 @@ export default function ForgotPassword() {
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
+                className="text-sm text-blue-400 transition-colors hover:text-blue-300"
             >
                 Forgot password?
             </button>
 
-            <Dialog isOpen={isOpen} onOpenChange={setIsOpen}>
+            <Dialog
+                isOpen={isOpen}
+                onOpenChange={setIsOpen}
+                className="border-white/10 bg-zinc-900"
+            >
                 <DialogHeader>
-                    <DialogTitle>Reset your password</DialogTitle>
+                    <DialogTitle className="text-zinc-100">Reset your password</DialogTitle>
                     <DialogDescription>
                         Enter the email address associated with your account and we&apos;ll
                         send you a link to reset your password.
                     </DialogDescription>
                 </DialogHeader>
-                <DialogBody>
+                <DialogBody className="text-zinc-400">
                     <div className="grid gap-2">
-                        <Label htmlFor={id} className="text-sm text-text-secondary">
+                        <Label htmlFor={id} className={labelClass}>
                             Email
                         </Label>
-                        <Input
+                        <input
                             id={id}
                             type="email"
                             placeholder="john@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            className={inputClass}
                         />
                     </div>
                     {error && (
-                        <p className="mt-2 text-sm text-danger">{error}</p>
+                        <p className="mt-3 text-sm text-red-400">{error}</p>
                     )}
                     {sent && (
-                        <p className="mt-2 text-sm text-success">
-                            Check your inbox for the reset link.
-                        </p>
+                        <p className={successClass}>Check your inbox for the reset link.</p>
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button appearance="outline" onPress={() => setIsOpen(false)}>
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="h-10 rounded-full border border-white/10 px-5 text-sm font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200"
+                    >
                         Cancel
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onPress={handleReset}
+                    </button>
+                    <button
+                        onClick={handleReset}
                         disabled={loading}
+                        className="h-10 rounded-full bg-blue-500 px-5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 disabled:opacity-50"
                     >
                         {loading ? "Sending..." : "Send Reset Link"}
-                    </Button>
+                    </button>
                 </DialogFooter>
             </Dialog>
         </>

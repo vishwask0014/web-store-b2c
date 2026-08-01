@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@/components/tailgrids/core/button";
-import { Input } from "@/components/tailgrids/core/input";
 import { auth } from "@/app/lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
+import { motion } from "framer-motion";
 import useAuthStore from "@/app/stores/authStore";
+import { headingClass, subheadingClass, labelClass, inputClass, buttonClass, errorClass } from "./authStyles";
 
 export default function SignIn() {
     const router = useRouter();
@@ -42,66 +42,61 @@ export default function SignIn() {
     };
 
     return (
-        <div>
-            <h2 className="text-2xl font-semibold text-text-primary mb-2">
-                Create Account
-            </h2>
-            <p className="text-sm text-text-secondary mb-8">
-                Create your account to get started.
-            </p>
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+        >
+            <h2 className={`${headingClass} mb-2`}>Create Account</h2>
+            <p className={subheadingClass}>Create your account to get started.</p>
 
             <div className="flex flex-col gap-4">
                 <div className="w-full grid gap-2">
-                    <Label htmlFor={nameId} className="text-sm text-text-secondary">
-                        Name
-                    </Label>
-                    <Input
+                    <Label htmlFor={nameId} className={labelClass}>Name</Label>
+                    <input
                         id={nameId}
                         type="text"
                         placeholder="John Doe"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        className={inputClass}
                     />
                 </div>
 
                 <div className="w-full grid gap-2">
-                    <Label htmlFor={emailId} className="text-sm text-text-secondary">
-                        Email
-                    </Label>
-                    <Input
+                    <Label htmlFor={emailId} className={labelClass}>Email</Label>
+                    <input
                         id={emailId}
                         type="email"
                         placeholder="john@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        className={inputClass}
                     />
                 </div>
 
                 <div className="w-full grid gap-2">
-                    <Label htmlFor={passwordId} className="text-sm text-text-secondary">
-                        Password
-                    </Label>
-                    <Input
+                    <Label htmlFor={passwordId} className={labelClass}>Password</Label>
+                    <input
                         id={passwordId}
                         type="password"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        className={inputClass}
                     />
                 </div>
 
-                {error && <p className="text-danger text-sm">{error}</p>}
+                {error && <p className={errorClass}>{error}</p>}
 
-                <Button
-                    variant="primary"
-                    size="sm"
+                <button
                     onClick={handleSignIn}
                     disabled={loading}
-                    className="w-full"
+                    className={buttonClass}
                 >
                     {loading ? "Creating account..." : "Create Account"}
-                </Button>
+                </button>
             </div>
-        </div>
+        </motion.div>
     );
 }
