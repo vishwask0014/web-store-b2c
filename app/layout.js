@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
+import SplashGate from "@/components/splash/SplashGate";
 
 export const metadata = {
   title: "B2C Store — Buy Products & Services from Local Stores",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <AuthProvider>{children}</AuthProvider>
+        <SplashGate />
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useAuth } from "@/app/providers/AuthProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import SplashScreen from "@/components/splash/SplashScreen";
 
 export default function ProtectedRoute({ children, requiredRole }) {
   const { user, userType, loading } = useAuth();
@@ -22,14 +23,13 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
   if (loading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-zinc-950">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 shadow-lg shadow-blue-500/30">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          </div>
-          <span className="text-sm text-zinc-500">Loading your workspace...</span>
-        </div>
-      </div>
+      <SplashScreen
+        brand="B2C STORE"
+        tagline="your marketplace"
+        accent="#3B82F6"
+        minDuration={800}
+        ready={!loading && !!user}
+      />
     );
   }
 
