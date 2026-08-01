@@ -16,8 +16,11 @@ import {
   Smartphone,
   Zap,
   Loader2,
+  FlaskConical,
 } from "lucide-react";
 import { errorClass, successClass, inputClass, labelClass } from "@/app/components/AuthForm/authStyles";
+
+const TEST_MODE = (process.env.NEXT_PUBLIC_PAYMENT_MODE || "test") !== "live";
 
 let razorpayScriptPromise = null;
 
@@ -177,6 +180,21 @@ export default function CheckoutPage() {
     }
   };
 
+  const simulatePay = async () => {
+    setError("");
+    if (!user) return;
+    setPlacing(true);
+    try {
+      const order = await createOrderWithPayment("", `pay_test_${Date.now()}`, Math.round(total * 100));
+      setPlacedOrder(order);
+      fetchCart(user.uid);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPlacing(false);
+    }
+  };
+
   if (placedOrder) {
     return (
       <ShopLayout>
@@ -191,7 +209,7 @@ export default function CheckoutPage() {
           </p>
           {placedOrder.paid && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-              <Check className="h-3.5 w-3.5" /> Paid via Razorpay
+              <Check className="h-3.5 w-3.5" /> Paid via Razorpay{TEST_MODE ? " (test)" : ""}
             </span>
           )}
           <div className="flex flex-wrap justify-center gap-3">
@@ -234,9 +252,16 @@ export default function CheckoutPage() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Checkout</h1>
             <p className="mt-1 text-sm text-zinc-500">Review your order and pay</p>
           </div>
-          <Link href="/cart" className="shrink-0 text-sm font-medium text-blue-400 hover:text-blue-300">
-            Back to cart
-          </Link>
+          <div className="flex shrink-0 items-center gap-3">
+            {TEST_MODE && (
+              <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-400">
+                Test mode — no real money
+              </span>
+            )}
+            <Link href="/cart" className="shrink-0 text-sm font-medium text-blue-400 hover:text-blue-300">
+              Back to cart
+            </Link>
+          </div>
         </div>
 
         {error && <div className={errorClass}>{error}</div>}
@@ -451,6 +476,16 @@ export default function CheckoutPage() {
               >
                 <ShieldCheck className="h-4 w-4" />
                 {placing ? "Placing order..." : "Place order with saved method"}
+              </button>
+            )}
+            {TEST_MODE && (
+              <button
+                onClick={simulatePay}
+                disabled={placing}
+                className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/5 px-6 py-2.5 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+              >
+                <FlaskConical className="h-4 w-4" />
+                {placing ? "Simulating..." : "Simulate successful payment (test)"}
               </button>
             )}
           </div>

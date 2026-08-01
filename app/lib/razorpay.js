@@ -7,6 +7,29 @@ export const PAYOUT_CURRENCY = "INR";
 
 const keyId = () => process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 
+export function isTestMode() {
+  return (process.env.NEXT_PUBLIC_PAYMENT_MODE || "test") !== "live";
+}
+
+export function isLiveMode() {
+  return !isTestMode();
+}
+
+export function isSimulatedPaymentId(paymentId) {
+  return isTestMode() && typeof paymentId === "string" && paymentId.startsWith("pay_test_");
+}
+
+export function simulatedPayment(paymentId, amountMinor) {
+  return {
+    id: paymentId,
+    status: "captured",
+    amount: Number(amountMinor) || 0,
+    method: "card",
+    card: { last4: "4242", network: "Visa" },
+    vpa: "",
+  };
+}
+
 export function isRazorpayConfigured() {
   return Boolean(keyId() && process.env.RAZORPAY_KEY_SECRET);
 }

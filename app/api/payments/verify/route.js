@@ -1,21 +1,39 @@
 import { NextResponse } from "next/server";
 import { getRequestUser, unauthorized } from "@/app/lib/auth";
-import { getRazorpay, isRazorpayConfigured } from "@/app/lib/razorpay";
+import {
+  getRazorpay,
+  isRazorpayConfigured,
+  isSimulatedPaymentId,
+  simulatedPayment,
+} from "@/app/lib/razorpay";
 
 export async function POST(req) {
   try {
     const session = await getRequestUser(req);
     if (!session) return unauthorized();
 
-    if (!isRazorpayConfigured()) {
-      return NextResponse.json({ error: "Razorpay is not configured." }, { status: 503 });
-    }
-
     const body = await req.json();
     const { razorpayOrderId, razorpayPaymentId, amountMinor } = body;
 
     if (!razorpayOrderId || !razorpayPaymentId) {
       return NextResponse.json({ error: "Missing payment details." }, { status: 400 });
+    }
+
+    if (isSimulatedPaymentId(razorpayPaymentId)) {
+      const sim = simulatedPayment(razorpayPaymentId, amountMinor);
+      return NextResponse.json({
+        verified: true,
+        simulated: true,
+        razorpayPaymentId: sim.id,
+        method: sim.method,
+        cardLast4: sim.card.last4,
+        cardBrand: sim.card.network,
+        upiId: "",
+      });
+    }
+
+    if (!isRazorpayConfigured()) {
+      return NextResponse.json({ error: "Razorpay is not configured." }, { status: 503 });
     }
 
     const rzp = getRazorpay();

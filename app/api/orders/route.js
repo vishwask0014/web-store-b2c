@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
 import { createNotification } from "@/app/lib/notify";
-import { getRazorpay, isRazorpayConfigured, buildSettlements } from "@/app/lib/razorpay";
+import { getRazorpay, isRazorpayConfigured, buildSettlements, isSimulatedPaymentId, simulatedPayment } from "@/app/lib/razorpay";
 
 export async function GET(req) {
   try {
@@ -67,17 +67,21 @@ export async function POST(req) {
 
     let razorpayVerified = null;
     if (razorpayPaymentId) {
-      if (!isRazorpayConfigured()) {
-        return NextResponse.json({ error: "Razorpay is not configured." }, { status: 503 });
+      if (isSimulatedPaymentId(razorpayPaymentId)) {
+        razorpayVerified = simulatedPayment(razorpayPaymentId, amountMinor);
+      } else {
+        if (!isRazorpayConfigured()) {
+          return NextResponse.json({ error: "Razorpay is not configured." }, { status: 503 });
+        }
+        const rzp = getRazorpay();
+        const payment = await rzp.payments.fetch(razorpayPaymentId);
+        const orderOk = !razorpayOrderId || payment.order_id === razorpayOrderId;
+        const amountOk = !amountMinor || Number(payment.amount) === Number(amountMinor);
+        if (!orderOk || !amountOk || !["captured", "authorized"].includes(payment.status)) {
+          return NextResponse.json({ error: "Payment verification failed." }, { status: 400 });
+        }
+        razorpayVerified = payment;
       }
-      const rzp = getRazorpay();
-      const payment = await rzp.payments.fetch(razorpayPaymentId);
-      const orderOk = !razorpayOrderId || payment.order_id === razorpayOrderId;
-      const amountOk = !amountMinor || Number(payment.amount) === Number(amountMinor);
-      if (!orderOk || !amountOk || !["captured", "authorized"].includes(payment.status)) {
-        return NextResponse.json({ error: "Payment verification failed." }, { status: 400 });
-      }
-      razorpayVerified = payment;
     }
 
     let payment = null;
