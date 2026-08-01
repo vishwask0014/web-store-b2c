@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/app/providers/AuthProvider";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { signOut } from "firebase/auth";
@@ -198,7 +199,7 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
                           const SubIcon = ICONS[sub.icon] ?? Home;
                           const subActive = pathname?.includes(sub.slug);
                           return (
-                            <a
+                            <Link
                               key={sub.slug}
                               href={`/${item.slug}/${sub.slug}`}
                               className={`flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors ${
@@ -209,7 +210,7 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
                             >
                               <SubIcon className="h-3.5 w-3.5 shrink-0" />
                               {sub.name}
-                            </a>
+                            </Link>
                           );
                         })}
                       </motion.div>
@@ -219,21 +220,21 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
               );
             })}
 
-            <a
+            <Link
               href="/profile-settings"
               title={collapsed ? "Profile" : undefined}
               className={navItemClass(pathname?.includes("profile-settings") || false)}
             >
               <User className="h-5 w-5 shrink-0" />
               {!collapsed && <span className="flex-1 text-left">Profile</span>}
-            </a>
+            </Link>
           </div>
         </nav>
 
         {/* Bottom: profile + collapse + logout */}
         <div className="border-t border-white/[0.06] p-3">
           {!collapsed && (
-            <a
+            <Link
               href="/profile-settings"
               className="mb-2 flex items-center gap-3 rounded-full px-2 py-2 transition-colors hover:bg-white/[0.04]"
             >
@@ -244,7 +245,7 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
                 <p className="truncate text-sm font-medium text-zinc-200">{user?.name || "Profile"}</p>
                 <p className="truncate text-[11px] capitalize text-zinc-500">{userType || "Member"}</p>
               </div>
-            </a>
+            </Link>
           )}
           <div className="flex items-center gap-1">
             <button

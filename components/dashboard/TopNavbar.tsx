@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -179,18 +180,18 @@ export default function TopNavbar({ onToggleSidebar }: TopNavbarProps) {
                 <p className="px-3 py-2 text-sm text-zinc-500">No stores yet.</p>
               ) : (
                 stores.map((s) => (
-                  <a
-                    key={s.uniqueStoreId}
-                    href="/dashboard/store"
-                    onClick={closeMenus}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/[0.04]"
-                  >
+                <Link
+                  key={s.uniqueStoreId}
+                  href="/dashboard/store"
+                  onClick={closeMenus}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/[0.04]"
+                >
                     <span
                       className={`h-2 w-2 rounded-full ${s.disabled ? "bg-red-500" : "bg-emerald-500"}`}
                     />
                     <span className="truncate">{s.name}</span>
                     <span className="ml-auto text-[11px] text-zinc-600">{s.category}</span>
-                  </a>
+                  </Link>
                 ))
               )}
             </AnimateMenu>

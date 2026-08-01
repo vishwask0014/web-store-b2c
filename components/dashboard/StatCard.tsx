@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import type { LucideIcon } from "lucide-react";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -96,14 +97,11 @@ export default function StatCard({ title, value, growth, icon: Icon, accent, spa
 
   if (href) {
     return (
-      <motion.a
-        href={href}
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
-        className="block"
-      >
-        {inner}
-      </motion.a>
+      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+        <Link href={href} className="block">
+          {inner}
+        </Link>
+      </motion.div>
     );
   }
   return <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>{inner}</motion.div>;

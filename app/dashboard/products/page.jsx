@@ -4,6 +4,7 @@ import DashboardLayout from "@/app/components/common/dashboardLayout";
 import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { useAuth } from "@/app/providers/AuthProvider";
+import Link from "next/link";
 import { Package, Plus, Wrench, AlertTriangle } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label, Switch } from "react-aria-components";
@@ -39,8 +40,10 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (!selectedStore) {
-      setPool([]);
-      setSelectedServices([]);
+      void Promise.resolve().then(() => {
+        setPool([]);
+        setSelectedServices([]);
+      });
       return;
     }
     fetch(`/api/stores/${selectedStore}/services`)
@@ -56,7 +59,9 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    fetchProducts(selectedStore);
+    if (selectedStore) {
+      void Promise.resolve().then(() => fetchProducts(selectedStore));
+    }
   }, [selectedStore]);
 
   const handleCreate = async () => {
@@ -271,20 +276,20 @@ export default function ProductsPage() {
                       </div>
                     </div>
                     {p.isServiceAvailable && (
-                      <a
+                      <Link
                         href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
                         className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
                       >
                         Manage Services &rarr;
-                      </a>
+                      </Link>
                     )}
                     {!p.isServiceAvailable && (
-                      <a
+                      <Link
                         href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
                         className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
                       >
                         Details &rarr;
-                      </a>
+                      </Link>
                     )}
                   </div>
                 ))}

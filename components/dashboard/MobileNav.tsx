@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Home, Store, Package, ShoppingBag, User } from "lucide-react";
 
 const ITEMS = [
@@ -21,7 +22,7 @@ export default function MobileNav() {
           const Icon = item.icon;
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
           return (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
@@ -30,7 +31,7 @@ export default function MobileNav() {
             >
               <Icon className="h-5 w-5" />
               {item.label}
-            </a>
+            </Link>
           );
         })}
       </div>

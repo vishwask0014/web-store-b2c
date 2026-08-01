@@ -1,5 +1,6 @@
 import { Button } from "@/components/tailgrids/core/button";
 import Logo from "@/app/components/common/Logo";
+import Link from "next/link";
 import {
   Store,
   Package,
@@ -123,36 +124,36 @@ export default function Home() {
             <Logo />
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-text-secondary md:flex">
-            <a href="/products" className="transition-colors hover:text-text-primary">
+            <Link href="/products" className="transition-colors hover:text-text-primary">
               Products
-            </a>
-            <a href="/stores" className="transition-colors hover:text-text-primary">
+            </Link>
+            <Link href="/stores" className="transition-colors hover:text-text-primary">
               Stores
-            </a>
-            <a
+            </Link>
+            <Link
               href="#features"
               className="transition-colors hover:text-text-primary"
             >
               Features
-            </a>
-            <a
+            </Link>
+            <Link
               href="#how-it-works"
               className="transition-colors hover:text-text-primary"
             >
               How It Works
-            </a>
-            <a
+            </Link>
+            <Link
               href="#categories"
               className="transition-colors hover:text-text-primary"
             >
               Categories
-            </a>
+            </Link>
           </nav>
-          <a href="/auth">
+          <Link href="/auth">
             <Button variant="primary" size="sm">
               Get Started
             </Button>
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -178,16 +179,16 @@ export default function Home() {
                 you offer.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a href="/auth">
+                <Link href="/auth">
                   <Button variant="primary" size="lg" className="gap-2">
                     Start Selling <ArrowRight className="h-4 w-4" />
                   </Button>
-                </a>
-                <a href="#how-it-works">
+                </Link>
+                <Link href="#how-it-works">
                   <Button variant="primary" appearance="outline" size="lg">
                     Learn More
                   </Button>
-                </a>
+                </Link>
               </div>
             </div>
             <div className="hidden lg:block">
@@ -360,11 +361,11 @@ export default function Home() {
             own charges — all from one place.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <a href="/auth">
+            <Link href="/auth">
               <Button variant="primary" size="lg" className="gap-2">
                 Create Your Store <ArrowRight className="h-4 w-4" />
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
