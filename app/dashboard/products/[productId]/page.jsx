@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
 import { compressImage, uploadFile } from "@/app/lib/upload";
-import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2, Image as ImageIcon, X, Loader2, Check, Save } from "lucide-react";
+import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2, Image as ImageIcon, X, Loader2, Check, Save, Copy } from "lucide-react";
 
 const MAX_SERVICES = 7;
 
@@ -39,8 +39,11 @@ export default function ProductDetailPage() {
   const [svcPhotoFile, setSvcPhotoFile] = useState(null);
   const [svcPhotoPreview, setSvcPhotoPreview] = useState("");
   const [details, setDetails] = useState(null);
+  const [savedDetails, setSavedDetails] = useState(null);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsMsg, setDetailsMsg] = useState("");
+  const [detailsError, setDetailsError] = useState("");
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -62,6 +65,16 @@ export default function ProductDetailPage() {
     setPool(svcs);
     setStore(str);
     setDetails({
+      name: prod.name || "",
+      price: prod.price ?? "",
+      discountPrice: prod.discountPrice ?? "",
+      quantity: prod.quantity ?? "",
+      description: prod.description || "",
+      category: prod.category || "",
+      brand: prod.brand || "",
+      isActive: prod.isActive !== false,
+    });
+    setSavedDetails({
       name: prod.name || "",
       price: prod.price ?? "",
       discountPrice: prod.discountPrice ?? "",
@@ -169,10 +182,16 @@ export default function ProductDetailPage() {
   };
 
   const saveDetails = async () => {
-    setError("");
+    setDetailsError("");
     setDetailsMsg("");
-    if (!details.name?.trim() || !details.price || !details.quantity) {
-      setError("Name, price, and quantity are required.");
+    if (!details.name?.trim() || details.price === "" || details.quantity === "") {
+      setDetailsError("Name, price, and quantity are required.");
+      return;
+    }
+    const priceNum = Number(details.price);
+    const discountNum = details.discountPrice ? Number(details.discountPrice) : 0;
+    if (details.discountPrice && discountNum >= priceNum) {
+      setDetailsError("Discount price must be lower than the price.");
       return;
     }
     setDetailsSaving(true);
@@ -182,8 +201,8 @@ export default function ProductDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: details.name.trim(),
-          price: Number(details.price),
-          discountPrice: details.discountPrice ? Number(details.discountPrice) : null,
+          price: priceNum,
+          discountPrice: discountNum > 0 ? discountNum : null,
           quantity: Number(details.quantity),
           description: details.description || "",
           category: details.category || "",
@@ -195,12 +214,41 @@ export default function ProductDetailPage() {
       if (!res.ok) throw new Error(data.error);
       setProduct(data);
       setDetailsMsg("Product details saved.");
+      setSavedDetails({
+        name: data.name || "",
+        price: data.price ?? "",
+        discountPrice: data.discountPrice ?? "",
+        quantity: data.quantity ?? "",
+        description: data.description || "",
+        category: data.category || "",
+        brand: data.brand || "",
+        isActive: data.isActive !== false,
+      });
       setTimeout(() => setDetailsMsg(""), 2500);
     } catch (err) {
-      setError(err.message);
+      setDetailsError(err.message);
     } finally {
       setDetailsSaving(false);
     }
+  };
+
+  const dirty =
+    details && savedDetails ? JSON.stringify(details) !== JSON.stringify(savedDetails) : false;
+  const priceNum = Number(details?.price) || 0;
+  const discountNum = details?.discountPrice ? Number(details.discountPrice) : 0;
+  const discountInvalid = details?.discountPrice && discountNum >= priceNum && priceNum > 0;
+  const pctOff = priceNum > 0 && discountNum > 0 ? Math.round(((priceNum - discountNum) / priceNum) * 100) : 0;
+  const qty = Math.max(0, Number(details?.quantity) || 0);
+  const stockPct = Math.min(100, (qty / 50) * 100);
+  const nameError = Boolean(details) && !details.name?.trim();
+  const priceError = Boolean(details) && (details.price === "" || Number(details.price) < 0);
+  const qtyError = Boolean(details) && (details.quantity === "" || Number(details.quantity) < 0);
+
+  const copyId = () => {
+    navigator.clipboard?.writeText(product.uniqueProductId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   const handleImagesSelect = (e) => {
@@ -293,69 +341,194 @@ export default function ProductDetailPage() {
         )}
 
         <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            <div className="flex items-center gap-2 flex-wrap">
               <Package className="w-5 h-5 text-text-secondary" />
               <h2 className="text-lg font-semibold text-text-primary">Product Details</h2>
+              {details && (
+                <span
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    details.isActive ? "bg-success/10 text-success" : "bg-bg-muted text-text-muted"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${details.isActive ? "bg-success" : "bg-text-muted"}`} />
+                  {details.isActive ? "Live" : "Hidden"}
+                </span>
+              )}
+              {details && qty <= 5 && (
+                <span className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-500">
+                  <AlertTriangle className="w-3 h-3" /> Low stock
+                </span>
+              )}
             </div>
-            <Button size="sm" onPress={saveDetails} isDisabled={detailsSaving}>
-              <Save className="w-4 h-4" />
-              {detailsSaving ? "Saving..." : "Save Details"}
+            <Button size="sm" onPress={saveDetails} isDisabled={detailsSaving || !dirty}>
+              {detailsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {detailsSaving ? "Saving..." : dirty ? "Save Changes" : "Saved"}
             </Button>
           </div>
           {details ? (
-            <div className="grid gap-4 max-w-lg">
-              <div className="grid gap-1">
-                <Label className="text-sm text-text-secondary">Product Name</Label>
-                <Input value={details.name} onChange={(e) => setDetails((p) => ({ ...p, name: e.target.value }))} />
+            <div className="grid gap-5">
+              <div className="flex items-center justify-between rounded-xl bg-bg-muted/60 px-3.5 py-2.5 text-xs text-text-muted">
+                <span>
+                  Product ID: <b className="font-medium text-text-primary">{product.uniqueProductId}</b>
+                </span>
+                <button
+                  type="button"
+                  onClick={copyId}
+                  className="flex items-center gap-1.5 font-medium text-primary-400 hover:text-primary-500 transition-colors"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
               </div>
+
+              <div className="grid gap-1.5">
+                <Label className="text-sm text-text-secondary">
+                  Product Name <span className="text-danger">*</span>
+                </Label>
+                <Input
+                  state={nameError ? "error" : "default"}
+                  placeholder="e.g. Wireless Headphones"
+                  value={details.name}
+                  onChange={(e) => setDetails((p) => ({ ...p, name: e.target.value }))}
+                />
+                {nameError && (
+                  <p className="flex items-center gap-1 text-xs text-danger">
+                    <AlertTriangle className="w-3 h-3" /> Name is required.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="grid gap-1">
-                  <Label className="text-sm text-text-secondary">Price ($)</Label>
-                  <Input type="number" min="0" value={details.price} onChange={(e) => setDetails((p) => ({ ...p, price: e.target.value }))} />
+                <div className="grid gap-1.5">
+                  <Label className="text-sm text-text-secondary">
+                    Price ($) <span className="text-danger">*</span>
+                  </Label>
+                  <Input
+                    state={priceError ? "error" : "default"}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="49.99"
+                    value={details.price}
+                    onChange={(e) => setDetails((p) => ({ ...p, price: e.target.value }))}
+                  />
+                  <p className="text-xs text-text-muted">The price customers pay.</p>
                 </div>
-                <div className="grid gap-1">
+                <div className="grid gap-1.5">
                   <Label className="text-sm text-text-secondary">Discount ($)</Label>
-                  <Input type="number" min="0" placeholder="Optional" value={details.discountPrice} onChange={(e) => setDetails((p) => ({ ...p, discountPrice: e.target.value }))} />
+                  <Input
+                    state={discountInvalid ? "error" : "default"}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Optional"
+                    value={details.discountPrice}
+                    onChange={(e) => setDetails((p) => ({ ...p, discountPrice: e.target.value }))}
+                  />
+                  {discountInvalid ? (
+                    <p className="flex items-center gap-1 text-xs text-danger">
+                      <AlertTriangle className="w-3 h-3" /> Must be lower than the price.
+                    </p>
+                  ) : pctOff > 0 ? (
+                    <p className="text-xs font-medium text-success">
+                      Sells at ${(priceNum - discountNum).toFixed(2)} · {pctOff}% off
+                    </p>
+                  ) : (
+                    <p className="text-xs text-text-muted">Leave empty for no discount.</p>
+                  )}
                 </div>
-                <div className="grid gap-1">
-                  <Label className="text-sm text-text-secondary">Quantity</Label>
-                  <Input type="number" min="0" value={details.quantity} onChange={(e) => setDetails((p) => ({ ...p, quantity: e.target.value }))} />
+                <div className="grid gap-1.5">
+                  <Label className="text-sm text-text-secondary">
+                    Quantity <span className="text-danger">*</span>
+                  </Label>
+                  <Input
+                    state={qtyError ? "error" : "default"}
+                    type="number"
+                    min="0"
+                    value={details.quantity}
+                    onChange={(e) => setDetails((p) => ({ ...p, quantity: e.target.value }))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 rounded-full bg-bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          qty === 0 ? "bg-danger" : qty <= 5 ? "bg-amber-500" : "bg-success"
+                        }`}
+                        style={{ width: `${stockPct}%` }}
+                      />
+                    </div>
+                    <span className={`shrink-0 text-[11px] font-medium ${qty === 0 ? "text-danger" : qty <= 5 ? "text-amber-500" : "text-success"}`}>
+                      {qty === 0 ? "Out of stock" : qty <= 5 ? "Low stock" : "In stock"}
+                    </span>
+                  </div>
                 </div>
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="grid gap-1">
+                <div className="grid gap-1.5">
                   <Label className="text-sm text-text-secondary">Category</Label>
-                  <Input placeholder="e.g. Electronics" value={details.category} onChange={(e) => setDetails((p) => ({ ...p, category: e.target.value }))} />
+                  <Input
+                    placeholder="e.g. Electronics"
+                    value={details.category}
+                    onChange={(e) => setDetails((p) => ({ ...p, category: e.target.value }))}
+                  />
                 </div>
-                <div className="grid gap-1">
+                <div className="grid gap-1.5">
                   <Label className="text-sm text-text-secondary">Brand</Label>
-                  <Input placeholder="e.g. Samsung" value={details.brand} onChange={(e) => setDetails((p) => ({ ...p, brand: e.target.value }))} />
+                  <Input
+                    placeholder="e.g. Samsung"
+                    value={details.brand}
+                    onChange={(e) => setDetails((p) => ({ ...p, brand: e.target.value }))}
+                  />
                 </div>
               </div>
-              <div className="grid gap-1">
-                <Label className="text-sm text-text-secondary">Description</Label>
+
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-text-secondary">Description</Label>
+                  <span className="text-[11px] text-text-muted">{details.description.length}/500</span>
+                </div>
                 <textarea
                   value={details.description}
                   onChange={(e) => setDetails((p) => ({ ...p, description: e.target.value }))}
                   rows={3}
+                  maxLength={500}
                   className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500"
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
-                  <button
-                    type="button"
-                    onClick={() => setDetails((p) => ({ ...p, isActive: !p.isActive }))}
-                    className={`h-6 w-11 rounded-full p-0.5 transition-colors ${details.isActive ? "bg-primary-500" : "bg-bg-muted"}`}
-                    aria-pressed={details.isActive}
-                  >
-                    <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${details.isActive ? "translate-x-5" : ""}`} />
-                  </button>
-                  {details.isActive ? "Product is live" : "Product is hidden from the shop"}
-                </label>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border-default bg-bg-muted px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">
+                    {details.isActive ? "Product is live in the shop" : "Product is hidden from the shop"}
+                  </p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {details.isActive
+                      ? "Customers can see and buy this product."
+                      : "Customers can't see it — flip the switch to publish."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetails((p) => ({ ...p, isActive: !p.isActive }))}
+                  className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors ${details.isActive ? "bg-primary-500" : "bg-bg-muted"}`}
+                  aria-pressed={details.isActive}
+                >
+                  <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${details.isActive ? "translate-x-5" : ""}`} />
+                </button>
               </div>
-              {detailsMsg && <p className="flex items-center gap-1.5 text-sm font-medium text-success"><Check className="w-4 h-4" />{detailsMsg}</p>}
+
+              {detailsError && (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-danger">
+                  <AlertTriangle className="w-4 h-4 shrink-0" /> {detailsError}
+                </p>
+              )}
+              {detailsMsg && (
+                <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+                  <Check className="w-4 h-4" /> {detailsMsg}
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-text-muted">Loading details...</p>
