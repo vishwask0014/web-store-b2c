@@ -1,6 +1,7 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/models/Product";
 import Store from "@/app/models/Store";
+import Service from "@/app/models/Service";
 import Wishlist from "@/app/models/Wishlist";
 import User from "@/app/models/User";
 import { NextResponse } from "next/server";
@@ -51,14 +52,33 @@ export async function GET(req) {
       wishlistIds = new Set((wl?.items || []).map((i) => i.productId));
     }
 
+    const svcIds = [...new Set(products.flatMap((p) => (p.services || []).map((s) => s.serviceId)))];
+    const svcDocs = svcIds.length ? await Service.find({ _id: { $in: svcIds } }).lean() : [];
+    const svcMap = new Map(svcDocs.map((s) => [String(s._id), s]));
+
     const result = products.map((p) => {
       const store = storeMap.get(p.storeId);
+      const serviceDetails = (p.services || [])
+        .map((s) => {
+          const d = svcMap.get(s.serviceId);
+          return {
+            serviceId: s.serviceId,
+            name: s.name || d?.name || "",
+            charges: s.charges || d?.charges || 0,
+            chargeType: d?.chargeType || "fixed",
+            durationMinutes: d?.durationMinutes || null,
+            description: d?.description || "",
+            image: d?.image || "",
+          };
+        })
+        .filter((s) => s.name);
       return {
         ...p,
         storeName: store?.name || "",
         storeCategory: store?.category || "",
         deliveryEtaMinutes: deliveryEtaMinutes(store, userLoc),
         deliveryFee: store?.deliveryFee || 0,
+        serviceDetails,
         wishlisted: wishlistIds.has(p.uniqueProductId),
       };
     });
