@@ -37,6 +37,8 @@ export default function ProfileDropdown({ compact = false }) {
     .toUpperCase()
     .slice(0, 2);
 
+  const avatar = user?.avatar || "";
+
   const handleLogout = async () => {
     setIsLoading(true);
     try {
@@ -58,8 +60,13 @@ export default function ProfileDropdown({ compact = false }) {
         }`}
         aria-label="Account menu"
       >
-        <span className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-xs font-semibold text-white">
-          {initials}
+        <span className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
         </span>
         {!compact && <ChevronDown className="w-4 h-4 text-text-muted" />}
       </button>
@@ -69,16 +76,22 @@ export default function ProfileDropdown({ compact = false }) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-xl border border-border-default bg-bg-surface shadow-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border-divider">
-              <p className="text-sm font-semibold text-text-primary truncate">
-                {displayName}
-              </p>
-              <div className="flex items-center gap-2 mt-1 min-w-0">
-                <span className="text-xs text-text-muted truncate">
-                  {user?.email || user?.phone || "No email on file"}
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center text-xs font-semibold text-white overflow-hidden shrink-0">
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatar} alt={displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-text-primary truncate">{displayName}</p>
+                  <p className="text-xs text-text-muted truncate">{user?.email || user?.phone || "No email on file"}</p>
+                </div>
                 {userType && (
                   <span
-                    className={`inline-block shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded uppercase ${ROLE_STYLES[userType] || ROLE_STYLES.customer}`}
+                    className={`ml-auto inline-block shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded uppercase ${ROLE_STYLES[userType] || ROLE_STYLES.customer}`}
                   >
                     {userType}
                   </span>

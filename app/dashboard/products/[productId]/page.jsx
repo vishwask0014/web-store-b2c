@@ -8,7 +8,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
-import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2 } from "lucide-react";
+import { uploadFile } from "@/app/lib/upload";
+import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2, Image as ImageIcon, X, Loader2, Check } from "lucide-react";
 
 const MAX_SERVICES = 7;
 
@@ -32,6 +33,9 @@ export default function ProductDetailPage() {
   const [svcName, setSvcName] = useState("");
   const [svcCharges, setSvcCharges] = useState("");
   const [svcDescription, setSvcDescription] = useState("");
+  const [images, setImages] = useState([]);
+  const [imagesUploading, setImagesUploading] = useState(false);
+  const [imagesSaving, setImagesSaving] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +47,7 @@ export default function ProductDetailPage() {
       fetch(`/api/stores/${storeId}`).then((r) => r.json()),
     ]);
     setProduct(prod);
+    setImages(prod.images || []);
     setPool(svcs);
     setStore(str);
   };
@@ -132,6 +137,57 @@ export default function ProductDetailPage() {
     );
   };
 
+  const handleImagesSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setError("");
+    setImagesUploading(true);
+    try {
+      const urls = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 5 * 1024 * 1024) {
+          setError(`${file.name} is over 5 MB and was skipped.`);
+          continue;
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const url = await uploadFile(dataUrl, "products");
+        urls.push(url);
+      }
+      setImages((prev) => [...prev, ...urls]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImagesUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const saveImages = async () => {
+    setError("");
+    setImagesSaving(true);
+    try {
+      const res = await fetch(`/api/stores/${storeId}/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setProduct(data);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImagesSaving(false);
+    }
+  };
+
   if (!product) {
     return (
       <DashboardLayout>
@@ -164,6 +220,49 @@ export default function ProductDetailPage() {
             This store is disabled: {store.disabledReason}
           </div>
         )}
+
+        <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-text-secondary" />
+              <h2 className="text-lg font-semibold text-text-primary">Product Photos</h2>
+              <span className="text-xs text-text-muted">({images.length})</span>
+            </div>
+            <Button size="sm" onPress={saveImages} isDisabled={imagesSaving || imagesUploading}>
+              <Check className="w-4 h-4" />
+              {imagesSaving ? "Saving..." : "Save Photos"}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {images.map((img, i) => (
+              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-xl border border-border-default">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt={`Product photo ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-black/80"
+                  aria-label={`Remove photo ${i + 1}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <label className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-primary-500/50 hover:text-primary-400">
+              {imagesUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImagesSelect}
+                disabled={imagesUploading}
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-xs text-text-muted">
+            The first photo is the main image. All photos show as a carousel to customers.
+          </p>
+        </div>
 
         <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">

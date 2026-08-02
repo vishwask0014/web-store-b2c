@@ -4,8 +4,9 @@ import DashboardLayout from "@/app/components/common/dashboardLayout";
 import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { uploadFile } from "@/app/lib/upload";
 import Link from "next/link";
-import { Package, Plus, Wrench, AlertTriangle } from "lucide-react";
+import { Package, Plus, Wrench, AlertTriangle, X, Loader2 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label, Switch } from "react-aria-components";
 
@@ -28,6 +29,8 @@ export default function ProductsPage() {
   const [isServiceAvailable, setIsServiceAvailable] = useState(false);
   const [pool, setPool] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
+  const [images, setImages] = useState([]);
+  const [imagesUploading, setImagesUploading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -80,6 +83,7 @@ export default function ProductsPage() {
           price: Number(price),
           quantity: Number(quantity),
           description,
+          images,
           isServiceAvailable,
           services: selectedServices,
         }),
@@ -92,6 +96,7 @@ export default function ProductsPage() {
       setPrice("");
       setQuantity("");
       setDescription("");
+      setImages([]);
       setIsServiceAvailable(false);
       setSelectedServices([]);
       setShowForm(false);
@@ -100,6 +105,40 @@ export default function ProductsPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImagesSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setError("");
+    setImagesUploading(true);
+    try {
+      const urls = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) {
+          setError(`${file.name} is not an image and was skipped.`);
+          continue;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          setError(`${file.name} is over 5 MB and was skipped.`);
+          continue;
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const url = await uploadFile(dataUrl, "products");
+        urls.push(url);
+      }
+      setImages((prev) => [...prev, ...urls]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImagesUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -176,6 +215,47 @@ export default function ProductsPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 min-h-[80px]"
                     />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="text-sm text-text-secondary">
+                      Product Photos{" "}
+                      {images.length > 0 && <span className="text-xs text-text-muted">({images.length})</span>}
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {images.map((img, i) => (
+                        <div
+                          key={i}
+                          className="relative h-20 w-20 overflow-hidden rounded-xl border border-border-default"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img} alt={`Product ${i + 1}`} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-black/80"
+                            aria-label={`Remove photo ${i + 1}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-primary-500/50 hover:text-primary-400">
+                        {imagesUploading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Plus className="w-5 h-5" />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImagesSelect}
+                          disabled={imagesUploading}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-text-muted">Add multiple photos — shown as a carousel on product cards.</p>
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-sm text-text-secondary">

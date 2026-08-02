@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, Plus, Wrench } from "lucide-react";
-import { useState } from "react";
+import { Heart, Plus, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
 import Stars from "./Stars";
 
 export default function ProductCard({ product, store }) {
@@ -11,6 +11,10 @@ export default function ProductCard({ product, store }) {
   const [wishlisted, setWishlisted] = useState(product.wishlisted);
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [added, setAdded] = useState(false);
+  const [active, setActive] = useState(0);
+  const touchX = useRef(null);
+
+  const images = product.images?.length ? product.images : ["/placeholder.svg"];
 
   const price = product.price || 0;
   const serviceCharge = product.serviceCharge || 0;
@@ -57,18 +61,83 @@ export default function ProductCard({ product, store }) {
     }
   };
 
+  const prevImage = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActive((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const nextImage = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActive((i) => (i + 1) % images.length);
+  };
+
+  const onTouchStart = (e) => {
+    touchX.current = e.touches[0].clientX;
+  };
+
+  const onTouchEnd = (e) => {
+    if (touchX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    if (dx > 40) setActive((i) => (i - 1 + images.length) % images.length);
+    else if (dx < -40) setActive((i) => (i + 1) % images.length);
+    touchX.current = null;
+  };
+
   return (
     <Link
       href={`/products/${product.uniqueProductId}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-50">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={product.images?.[0] || "/placeholder.svg"}
-          alt={product.name}
-          className="h-full w-full object-cover transition group-hover:scale-105"
-        />
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-gray-50"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <div
+          className="flex h-full transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${active * 100}%)` }}
+        >
+          {images.map((img, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={img}
+              alt={product.name}
+              draggable={false}
+              className="h-full w-full shrink-0 object-cover transition group-hover:scale-105"
+            />
+          ))}
+        </div>
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prevImage}
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-gray-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:scale-110"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              onClick={nextImage}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-gray-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:scale-110"
+              aria-label="Next image"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+              {images.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === active ? "w-3 bg-blue-600" : "w-1.5 bg-white/70"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
         <button
           onClick={toggleWishlist}
           className="absolute right-2 top-2 rounded-full bg-white/90 p-2 shadow-sm transition hover:scale-110"

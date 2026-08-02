@@ -40,6 +40,7 @@ const UserSchema = new Schema(
     uid: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, index: { unique: true, partialFilterExpression: { email: { $ne: "" } } } },
+    avatar: { type: String, default: "" },
     role: { type: String, default: "customer", enum: ["customer", "seller", "operator", "admin"] },
     phone: { type: String, index: { unique: true, partialFilterExpression: { phone: { $ne: "" } } } },
     location: { type: LocationSchema, default: () => ({}) },

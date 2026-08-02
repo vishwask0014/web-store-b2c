@@ -64,6 +64,7 @@ export async function POST(req, { params }) {
       chargeType: body.chargeType || "fixed",
       durationMinutes: Number(body.durationMinutes) || 60,
       description: body.description || "",
+      image: body.image || "",
       storeId,
     });
     return NextResponse.json(service, { status: 201 });

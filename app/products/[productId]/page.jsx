@@ -5,7 +5,7 @@ import ProductCard from "@/app/components/shop/ProductCard";
 import Stars from "@/app/components/shop/Stars";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Heart,
   Minus,
@@ -17,6 +17,7 @@ import {
   Store,
   Clock,
   ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,6 +40,8 @@ export default function ProductDetailPage() {
   const [reviewMsg, setReviewMsg] = useState("");
   const [reviewError, setReviewError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
+  const touchX = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +51,7 @@ export default function ProductDetailPage() {
         if (!res.ok) throw new Error(json.error || "Product not found.");
         setData(json);
         setWishlisted(json.product.wishlisted || false);
+        setActiveImg(0);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -83,6 +87,7 @@ export default function ProductDetailPage() {
   }
 
   const { product, store, related, reviews } = data;
+  const images = product.images?.length ? product.images : ["/placeholder.svg"];
   const price = product.price || 0;
   const service = product.services?.find((s) => s.serviceId === serviceId);
   const serviceAvailable =
@@ -177,33 +182,93 @@ export default function ProductDetailPage() {
         </Link>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="relative aspect-square overflow-hidden rounded-2xl border border-border-default bg-bg-surface">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={product.images?.[0] || "/placeholder.svg"}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-            {serviceAvailable && (
-              <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
-                <Wrench size={12} /> Service available
-              </span>
-            )}
-            {discounted && (
-              <span className="absolute bottom-3 left-3 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
-                {Math.round(((price - product.discountPrice) / price) * 100)}% OFF
-              </span>
-            )}
-            <button
-              onClick={toggleWishlist}
-              className="absolute right-3 top-3 rounded-full bg-white/90 p-2.5 shadow-sm transition hover:scale-110"
-              aria-label="Toggle wishlist"
+          <div>
+            <div
+              className="relative aspect-square overflow-hidden rounded-2xl border border-border-default bg-bg-surface"
+              onTouchStart={(e) => {
+                touchX.current = e.touches[0].clientX;
+              }}
+              onTouchEnd={(e) => {
+                if (touchX.current === null) return;
+                const dx = e.changedTouches[0].clientX - touchX.current;
+                if (dx > 40) setActiveImg((i) => (i - 1 + images.length) % images.length);
+                else if (dx < -40) setActiveImg((i) => (i + 1) % images.length);
+                touchX.current = null;
+              }}
             >
-              <Heart
-                size={18}
-                className={wishlisted ? "fill-red-500 text-red-500" : "text-gray-500"}
-              />
-            </button>
+              <div
+                className="flex h-full transition-transform duration-300 ease-out"
+                style={{ transform: `translateX(-${activeImg * 100}%)` }}
+              >
+                {images.map((img, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={img}
+                    alt={`${product.name} ${i + 1}`}
+                    draggable={false}
+                    className="h-full w-full shrink-0 object-cover"
+                  />
+                ))}
+              </div>
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-sm transition hover:scale-110"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setActiveImg((i) => (i + 1) % images.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2.5 shadow-sm transition hover:scale-110"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              {serviceAvailable && (
+                <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                  <Wrench size={12} /> Service available
+                </span>
+              )}
+              {discounted && (
+                <span className="absolute bottom-3 left-3 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+                  {Math.round(((price - product.discountPrice) / price) * 100)}% OFF
+                </span>
+              )}
+              <button
+                onClick={toggleWishlist}
+                className="absolute right-3 top-3 rounded-full bg-white/90 p-2.5 shadow-sm transition hover:scale-110"
+                aria-label="Toggle wishlist"
+              >
+                <Heart
+                  size={18}
+                  className={wishlisted ? "fill-red-500 text-red-500" : "text-gray-500"}
+                />
+              </button>
+            </div>
+            {images.length > 1 && (
+              <div className="mt-3 flex gap-2">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImg(i)}
+                    className={`h-16 w-16 overflow-hidden rounded-xl border-2 transition ${
+                      i === activeImg
+                        ? "border-primary-500"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                    aria-label={`Go to image ${i + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">
@@ -271,7 +336,13 @@ export default function ProductDetailPage() {
                         onChange={() => setServiceId(s.serviceId)}
                         className="accent-primary-500"
                       />
-                      <span className="flex-1 text-text-primary">{s.name}</span>
+                      <span className="flex flex-1 items-center gap-2 text-text-primary">
+                        {s.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.image} alt={s.name} className="h-7 w-7 rounded-lg object-cover" />
+                        )}
+                        {s.name}
+                      </span>
                       <span className="font-medium text-text-primary">
                         +${(s.charges || 0).toFixed(2)}
                       </span>

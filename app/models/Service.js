@@ -7,6 +7,7 @@ const ServiceSchema = new Schema(
     chargeType: { type: String, default: "fixed", enum: ["fixed", "hourly"] },
     durationMinutes: { type: Number, default: 60, min: 1 },
     description: { type: String, default: "" },
+    image: { type: String, default: "" },
     productId: { type: String, default: "", index: true },
     storeId: { type: String, required: true, index: true },
     isActive: { type: Boolean, default: true },

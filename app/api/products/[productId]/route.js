@@ -1,6 +1,7 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/models/Product";
 import Store from "@/app/models/Store";
+import Service from "@/app/models/Service";
 import Review from "@/app/models/Review";
 import { NextResponse } from "next/server";
 
@@ -40,9 +41,20 @@ export async function GET(req, { params }) {
       .sort({ createdAt: -1 })
       .limit(20);
 
+    const serviceDocs = await Service.find({
+      _id: { $in: product.services.map((s) => s.serviceId) },
+    });
+    const serviceMap = new Map(serviceDocs.map((s) => [String(s._id), s]));
+    const services = product.services.map((s) => ({
+      ...(s.toObject ? s.toObject() : s),
+      image: serviceMap.get(String(s.serviceId))?.image || "",
+      description: serviceMap.get(String(s.serviceId))?.description || "",
+    }));
+
     return NextResponse.json({
       product: {
         ...product.toObject(),
+        services,
         storeName: store?.name || "",
         storeCategory: store?.category || "",
         deliveryMinutes: store?.deliveryMinutes || 20,

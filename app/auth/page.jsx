@@ -78,41 +78,51 @@ export default function AuthPage() {
         {/* RIGHT — brand panel */}
         <div className="relative hidden flex-col justify-between overflow-hidden border-l border-white/5 bg-zinc-950/60 p-10 md:flex">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-blue-500/15 blur-3xl" />
+          <div>
 
-          <div className="relative">
-            <h2 className="text-2xl font-bold leading-snug tracking-tight text-zinc-100">
-              Your marketplace,
-              <br />
-              <span className="text-blue-400">your store.</span>
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-              One account for buying and selling. Create your store, list products, and start earning.
-            </p>
+            <div className="relative">
+              <h2 className="text-2xl font-bold leading-snug tracking-tight text-zinc-100">
+                Your marketplace,
+                <br />
+                <span className="text-blue-400">your store.</span>
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-500">
+                One account for buying and selling. Create your store, list products, and start earning.
+              </p>
+            </div>
+
+            <div className="relative flex flex-col gap-4 mt-8">
+              {FEATURES.map((f) => {
+                const Icon = f.icon;
+                return (
+                  <div key={f.title} className="flex items-start gap-3.5">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-900 text-blue-400">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">{f.title}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{f.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="relative flex flex-col gap-4">
-            {FEATURES.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div key={f.title} className="flex items-start gap-3.5">
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-zinc-900 text-blue-400">
-                    <Icon className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">{f.title}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{f.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="relative flex items-center gap-2 text-xs text-zinc-600">
-            <ShieldCheck className="h-4 w-4 text-emerald-500/70" />
-            Secured by Firebase Authentication
-            <span className="mx-1 text-zinc-800">·</span>
-            Need help?{" "}
-            <span className="font-medium text-zinc-400">support@b2cstore.com</span>
+          <div className="relative flex items-center justify-between gap-2 text-xs text-zinc-600">
+            <div>
+              <div className="text-emerald-500/70 flex gap-1 mb-1">
+                <ShieldCheck className="h-4 w-4 text-emerald-500/70" />
+                Secured by
+              </div>
+              <span className="text-zinc-400">
+                Firebase Authentication
+              </span>
+            </div>
+            <div>
+              Need help?<br />
+              <span className="font-medium text-zinc-400 mt-1">support@b2cstore.com</span>
+            </div>
           </div>
         </div>
       </div>

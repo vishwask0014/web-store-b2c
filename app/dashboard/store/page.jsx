@@ -19,9 +19,11 @@ import {
   Check,
   Truck,
   Save,
+  ImagePlus,
 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
+import { uploadFile } from "@/app/lib/upload";
 
 const MAX_SERVICES_PER_STORE = 7;
 const CATEGORY_SUGGESTIONS = ["Electronics", "Fashion", "Beauty", "Furniture", "Food", "Books", "Home Cleaning"];
@@ -124,6 +126,7 @@ export default function StorePage() {
           name: form.name,
           charges: Number(form.charges),
           description: form.description || "",
+          image: form.image || "",
         }),
       });
       const data = await res.json();
@@ -144,6 +147,33 @@ export default function StorePage() {
         ...prev,
         [storeId]: (prev[storeId] || []).filter((s) => s._id !== serviceId),
       }));
+    }
+  };
+
+  const handleSvcImage = async (storeId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSvcError("");
+    if (!file.type.startsWith("image/")) {
+      setSvcError("Please choose an image file.");
+      return;
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await uploadFile(dataUrl, "services");
+      setSvcForm((prev) => ({
+        ...prev,
+        [storeId]: { ...(prev[storeId] || {}), image: url },
+      }));
+    } catch (err) {
+      setSvcError(err.message);
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -505,12 +535,26 @@ export default function StorePage() {
                                 key={svc._id}
                                 className="flex items-center justify-between rounded-2xl border border-white/5 bg-zinc-950 p-3.5"
                               >
-                                <div>
-                                  <p className="text-sm font-medium text-zinc-200">{svc.name}</p>
-                                  <p className="mt-0.5 text-xs text-zinc-500">
-                                    ${svc.charges}
-                                    {svc.description ? ` — ${svc.description}` : ""}
-                                  </p>
+                                <div className="flex items-center gap-3">
+                                  {svc.image ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={svc.image}
+                                      alt={svc.name}
+                                      className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
+                                      <Wrench className="h-4 w-4" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium text-zinc-200">{svc.name}</p>
+                                    <p className="mt-0.5 text-xs text-zinc-500">
+                                      ${svc.charges}
+                                      {svc.description ? ` — ${svc.description}` : ""}
+                                    </p>
+                                  </div>
                                 </div>
                                 <button
                                   onClick={() => handleDeleteService(s.uniqueStoreId, svc._id)}
@@ -561,6 +605,26 @@ export default function StorePage() {
                               }
                               className={inputClass}
                             />
+                            <div className="flex items-center gap-3">
+                              {svcForm[s.uniqueStoreId]?.image && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={svcForm[s.uniqueStoreId].image}
+                                  alt="Service"
+                                  className="h-12 w-12 rounded-xl object-cover"
+                                />
+                              )}
+                              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white">
+                                <ImagePlus className="h-4 w-4" />
+                                {svcForm[s.uniqueStoreId]?.image ? "Change photo" : "Add photo"}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleSvcImage(s.uniqueStoreId, e)}
+                                />
+                              </label>
+                            </div>
                             {svcError && <p className={errorClass}>{svcError}</p>}
                             <button
                               onClick={() => handleAddService(s.uniqueStoreId)}

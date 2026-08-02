@@ -72,7 +72,7 @@ const tabListWrapperStyles = cva("max-sm:w-full", {
   compoundVariants: [
     {
       direction: "vertical",
-      className: "border-b border-base-200 [&>div]:w-full"
+      className: "[&>div]:w-full"
     },
     {
       direction: "vertical",

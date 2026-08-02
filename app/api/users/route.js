@@ -208,7 +208,7 @@ export async function PUT(req) {
       delete updates.payout;
     }
 
-    const allowed = ["name", "phone", "email"];
+    const allowed = ["name", "phone", "email", "avatar"];
     Object.keys(updates).forEach((key) => {
       if (allowed.includes(key)) user[key] = updates[key];
     });

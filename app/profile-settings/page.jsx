@@ -15,8 +15,10 @@ import {
   Smartphone,
   Wallet,
   Landmark,
+  Upload,
 } from "lucide-react";
 import { inputClass, labelClass, errorClass, successClass } from "@/app/components/AuthForm/authStyles";
+import { uploadFile } from "@/app/lib/upload";
 
 function PayoutCard({ userType, profile, onSaved }) {
   const { user } = useAuth();
@@ -176,7 +178,7 @@ function PayoutCard({ userType, profile, onSaved }) {
 }
 
 function ProfileContent() {
-  const { user, userType } = useAuth();
+  const { user, userType, refreshUser } = useAuth();
   const uid = user?.uid;
 
   const nameId = useId();
@@ -197,6 +199,8 @@ function ProfileContent() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [location, setLocation] = useState({});
+  const [avatar, setAvatar] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const [showCardForm, setShowCardForm] = useState(false);
   const [methodType, setMethodType] = useState("card");
@@ -219,6 +223,7 @@ function ProfileContent() {
       setName(data.name || "");
       setPhone(data.phone || "");
       setLocation(data.location || {});
+      setAvatar(data.avatar || "");
     }
     setLoading(false);
   };
@@ -249,6 +254,46 @@ function ProfileContent() {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+    setSuccess("");
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Profile photo must be under 5 MB.");
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await uploadFile(dataUrl, "profiles");
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, avatar: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAvatar(url);
+      setSuccess("Profile photo updated.");
+      refreshUser();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -423,6 +468,54 @@ function ProfileContent() {
         <div className="rounded-3xl border border-white/5 bg-[#18181B] p-6">
           <SectionHeader icon={UserIcon} title="Personal Details" />
           <div className="grid gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-500/15 text-blue-400">
+                {avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatar} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  <UserIcon className="h-7 w-7" />
+                )}
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <label
+                  className={`flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white ${
+                    avatarUploading ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  <Upload className="h-4 w-4" />
+                  {avatarUploading ? "Uploading..." : avatar ? "Change photo" : "Upload photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                    disabled={avatarUploading}
+                  />
+                </label>
+                {avatar && (
+                  <button
+                    onClick={async () => {
+                      setError("");
+                      setSuccess("");
+                      const res = await fetch("/api/users", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uid, avatar: "" }),
+                      });
+                      if (res.ok) {
+                        setAvatar("");
+                        setSuccess("Profile photo removed.");
+                        refreshUser();
+                      }
+                    }}
+                    className="text-xs text-zinc-500 transition-colors hover:text-red-400"
+                  >
+                    Remove photo
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <label htmlFor={nameId} className={labelClass}>
