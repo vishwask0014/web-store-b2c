@@ -23,6 +23,7 @@ import {
   LogOut,
   BarChart3,
   Store as StoreIcon,
+  Wrench,
 } from "lucide-react";
 
 const ROLE_BADGE = {
@@ -38,6 +39,7 @@ const ICONS = {
   user: User,
   store: Store,
   product: Package,
+  services: Wrench,
   orders: ShoppingBag,
   shield: Shield,
   settings: Settings,
@@ -66,6 +68,12 @@ export default function Sidebar({ mobileOpen, onClose, collapsed, onToggleCollap
       name: "Products",
       slug: "products",
       href: "/dashboard/products",
+    },
+    {
+      icons: "services",
+      name: "Services",
+      slug: "services",
+      href: "/dashboard/services",
     },
     {
       icons: "orders",

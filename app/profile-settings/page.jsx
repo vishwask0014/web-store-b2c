@@ -18,7 +18,7 @@ import {
   Upload,
 } from "lucide-react";
 import { inputClass, labelClass, errorClass, successClass } from "@/app/components/AuthForm/authStyles";
-import { uploadFile } from "@/app/lib/upload";
+import { compressImage, uploadFile } from "@/app/lib/upload";
 
 function PayoutCard({ userType, profile, onSaved }) {
   const { user } = useAuth();
@@ -266,18 +266,9 @@ function ProfileContent() {
       setError("Please choose an image file.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Profile photo must be under 5 MB.");
-      return;
-    }
     setAvatarUploading(true);
     try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await compressImage(file);
       const url = await uploadFile(dataUrl, "profiles");
       const res = await fetch("/api/users", {
         method: "PUT",

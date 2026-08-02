@@ -24,6 +24,7 @@ const PAGE_TITLES = {
   dashboard: "Dashboard",
   store: "Store",
   products: "Products",
+  services: "Services",
   orders: "Orders",
   admin: "Admin",
   users: "Users",
@@ -193,14 +194,14 @@ export default function TopNavbar({ onToggleSidebar }) {
           </div>
 
           <div ref={rangeRef} className="relative">
-            <button
+            {/* <button
               onClick={() => toggleMenu("range")}
               className="flex h-9 items-center gap-2 rounded-full border border-white/5 bg-zinc-900 px-3.5 text-sm text-zinc-300 transition-colors hover:border-white/10"
             >
               <Calendar className="h-4 w-4 text-zinc-500" />
               {RANGE_LABELS[range]}
               <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />
-            </button>
+            </button> */}
             <AnimateMenu open={openMenu === "range"}>
               {(Object.keys(RANGE_LABELS)).map((key) => (
                 <button

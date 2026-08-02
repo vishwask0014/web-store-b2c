@@ -8,8 +8,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
-import { uploadFile } from "@/app/lib/upload";
-import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2, Image as ImageIcon, X, Loader2, Check } from "lucide-react";
+import { compressImage, uploadFile } from "@/app/lib/upload";
+import { Package, Wrench, Plus, Trash2, AlertTriangle, Link2, Image as ImageIcon, X, Loader2, Check, Save } from "lucide-react";
 
 const MAX_SERVICES = 7;
 
@@ -34,8 +34,13 @@ export default function ProductDetailPage() {
   const [svcCharges, setSvcCharges] = useState("");
   const [svcDescription, setSvcDescription] = useState("");
   const [images, setImages] = useState([]);
-  const [imagesUploading, setImagesUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]);
   const [imagesSaving, setImagesSaving] = useState(false);
+  const [svcPhotoFile, setSvcPhotoFile] = useState(null);
+  const [svcPhotoPreview, setSvcPhotoPreview] = useState("");
+  const [details, setDetails] = useState(null);
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsMsg, setDetailsMsg] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -47,9 +52,25 @@ export default function ProductDetailPage() {
       fetch(`/api/stores/${storeId}`).then((r) => r.json()),
     ]);
     setProduct(prod);
-    setImages(prod.images || []);
+    setImages((prev) => {
+      const merged = [...(prod.images || [])];
+      prev.forEach((u) => {
+        if (!merged.includes(u)) merged.push(u);
+      });
+      return merged;
+    });
     setPool(svcs);
     setStore(str);
+    setDetails({
+      name: prod.name || "",
+      price: prod.price ?? "",
+      discountPrice: prod.discountPrice ?? "",
+      quantity: prod.quantity ?? "",
+      description: prod.description || "",
+      category: prod.category || "",
+      brand: prod.brand || "",
+      isActive: prod.isActive !== false,
+    });
   };
 
   useEffect(() => {
@@ -57,6 +78,7 @@ export default function ProductDetailPage() {
   }, [storeId, productId]);
 
   const linkedIds = product?.services?.map((s) => s.serviceId) || [];
+  const poolMap = new Map(pool.map((s) => [s._id, s]));
   const remaining = MAX_SERVICES - linkedIds.length;
   const availablePool = pool.filter((s) => !linkedIds.includes(s._id));
 
@@ -101,6 +123,11 @@ export default function ProductDetailPage() {
     }
     setLoading(true);
     try {
+      let image = "";
+      if (svcPhotoFile) {
+        const dataUrl = await compressImage(svcPhotoFile);
+        image = await uploadFile(dataUrl, "services");
+      }
       const res = await fetch(`/api/stores/${storeId}/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,6 +135,7 @@ export default function ProductDetailPage() {
           name: svcName,
           charges: Number(svcCharges),
           description: svcDescription,
+          image,
         }),
       });
       const data = await res.json();
@@ -119,9 +147,12 @@ export default function ProductDetailPage() {
       });
       const linkData = await linkRes.json();
       if (!linkRes.ok) throw new Error(linkData.error);
+      if (svcPhotoPreview) URL.revokeObjectURL(svcPhotoPreview);
       setSvcName("");
       setSvcCharges("");
       setSvcDescription("");
+      setSvcPhotoFile(null);
+      setSvcPhotoPreview("");
       setShowCreateForm(false);
       load();
     } catch (err) {
@@ -137,48 +168,88 @@ export default function ProductDetailPage() {
     );
   };
 
-  const handleImagesSelect = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  const saveDetails = async () => {
     setError("");
-    setImagesUploading(true);
+    setDetailsMsg("");
+    if (!details.name?.trim() || !details.price || !details.quantity) {
+      setError("Name, price, and quantity are required.");
+      return;
+    }
+    setDetailsSaving(true);
     try {
-      const urls = [];
-      for (const file of files) {
-        if (!file.type.startsWith("image/")) continue;
-        if (file.size > 5 * 1024 * 1024) {
-          setError(`${file.name} is over 5 MB and was skipped.`);
-          continue;
-        }
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const url = await uploadFile(dataUrl, "products");
-        urls.push(url);
-      }
-      setImages((prev) => [...prev, ...urls]);
+      const res = await fetch(`/api/stores/${storeId}/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: details.name.trim(),
+          price: Number(details.price),
+          discountPrice: details.discountPrice ? Number(details.discountPrice) : null,
+          quantity: Number(details.quantity),
+          description: details.description || "",
+          category: details.category || "",
+          brand: details.brand || "",
+          isActive: Boolean(details.isActive),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setProduct(data);
+      setDetailsMsg("Product details saved.");
+      setTimeout(() => setDetailsMsg(""), 2500);
     } catch (err) {
       setError(err.message);
     } finally {
-      setImagesUploading(false);
-      e.target.value = "";
+      setDetailsSaving(false);
     }
+  };
+
+  const handleImagesSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setError("");
+    const imgs = files.filter((f) => f.type.startsWith("image/"));
+    if (imgs.length !== files.length) {
+      setError("Some files were not images and were skipped.");
+    }
+    setPendingFiles((prev) => [
+      ...prev,
+      ...imgs.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+    e.target.value = "";
+  };
+
+  const handleSvcImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (svcPhotoPreview) URL.revokeObjectURL(svcPhotoPreview);
+    setSvcPhotoFile(file);
+    setSvcPhotoPreview(URL.createObjectURL(file));
+    e.target.value = "";
   };
 
   const saveImages = async () => {
     setError("");
     setImagesSaving(true);
     try {
+      const finalImages = [...images];
+      for (const p of pendingFiles) {
+        const dataUrl = await compressImage(p.file);
+        finalImages.push(await uploadFile(dataUrl, "products"));
+      }
       const res = await fetch(`/api/stores/${storeId}/products/${productId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images }),
+        body: JSON.stringify({ images: finalImages }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
+      setPendingFiles([]);
       setProduct(data);
       load();
     } catch (err) {
@@ -224,13 +295,83 @@ export default function ProductDetailPage() {
         <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-text-secondary" />
+              <h2 className="text-lg font-semibold text-text-primary">Product Details</h2>
+            </div>
+            <Button size="sm" onPress={saveDetails} isDisabled={detailsSaving}>
+              <Save className="w-4 h-4" />
+              {detailsSaving ? "Saving..." : "Save Details"}
+            </Button>
+          </div>
+          {details ? (
+            <div className="grid gap-4 max-w-lg">
+              <div className="grid gap-1">
+                <Label className="text-sm text-text-secondary">Product Name</Label>
+                <Input value={details.name} onChange={(e) => setDetails((p) => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid gap-1">
+                  <Label className="text-sm text-text-secondary">Price ($)</Label>
+                  <Input type="number" min="0" value={details.price} onChange={(e) => setDetails((p) => ({ ...p, price: e.target.value }))} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-sm text-text-secondary">Discount ($)</Label>
+                  <Input type="number" min="0" placeholder="Optional" value={details.discountPrice} onChange={(e) => setDetails((p) => ({ ...p, discountPrice: e.target.value }))} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-sm text-text-secondary">Quantity</Label>
+                  <Input type="number" min="0" value={details.quantity} onChange={(e) => setDetails((p) => ({ ...p, quantity: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-1">
+                  <Label className="text-sm text-text-secondary">Category</Label>
+                  <Input placeholder="e.g. Electronics" value={details.category} onChange={(e) => setDetails((p) => ({ ...p, category: e.target.value }))} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-sm text-text-secondary">Brand</Label>
+                  <Input placeholder="e.g. Samsung" value={details.brand} onChange={(e) => setDetails((p) => ({ ...p, brand: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-sm text-text-secondary">Description</Label>
+                <textarea
+                  value={details.description}
+                  onChange={(e) => setDetails((p) => ({ ...p, description: e.target.value }))}
+                  rows={3}
+                  className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
+                  <button
+                    type="button"
+                    onClick={() => setDetails((p) => ({ ...p, isActive: !p.isActive }))}
+                    className={`h-6 w-11 rounded-full p-0.5 transition-colors ${details.isActive ? "bg-primary-500" : "bg-bg-muted"}`}
+                    aria-pressed={details.isActive}
+                  >
+                    <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${details.isActive ? "translate-x-5" : ""}`} />
+                  </button>
+                  {details.isActive ? "Product is live" : "Product is hidden from the shop"}
+                </label>
+              </div>
+              {detailsMsg && <p className="flex items-center gap-1.5 text-sm font-medium text-success"><Check className="w-4 h-4" />{detailsMsg}</p>}
+            </div>
+          ) : (
+            <p className="text-sm text-text-muted">Loading details...</p>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
               <ImageIcon className="w-5 h-5 text-text-secondary" />
               <h2 className="text-lg font-semibold text-text-primary">Product Photos</h2>
               <span className="text-xs text-text-muted">({images.length})</span>
             </div>
-            <Button size="sm" onPress={saveImages} isDisabled={imagesSaving || imagesUploading}>
-              <Check className="w-4 h-4" />
-              {imagesSaving ? "Saving..." : "Save Photos"}
+            <Button size="sm" onPress={saveImages} isDisabled={imagesSaving}>
+              {imagesSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {imagesSaving ? "Uploading & saving..." : "Save Photos"}
             </Button>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -247,15 +388,31 @@ export default function ProductDetailPage() {
                 </button>
               </div>
             ))}
+            {pendingFiles.map((p, i) => (
+              <div key={`pending-${i}`} className="relative h-24 w-24 overflow-hidden rounded-xl border-2 border-dashed border-primary-500/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={`New photo ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  onClick={() => {
+                    URL.revokeObjectURL(p.url);
+                    setPendingFiles((prev) => prev.filter((_, j) => j !== i));
+                  }}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-black/80"
+                  aria-label={`Remove new photo ${i + 1}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
             <label className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-primary-500/50 hover:text-primary-400">
-              {imagesUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+              {imagesSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 className="hidden"
                 onChange={handleImagesSelect}
-                disabled={imagesUploading}
+                disabled={imagesSaving}
               />
             </label>
           </div>
@@ -305,6 +462,10 @@ export default function ProductDetailPage() {
                       onChange={() => toggleService(s._id)}
                       className="accent-primary-500 w-4 h-4"
                     />
+                    {s.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.image} alt={s.name} className="h-6 w-6 rounded-lg object-cover" />
+                    )}
                     <span className="text-sm text-text-primary">{s.name}</span>
                     <span className="text-xs text-text-muted ml-auto">${s.charges}</span>
                   </label>
@@ -338,6 +499,39 @@ export default function ProductDetailPage() {
                     className="rounded-xl border border-border-default bg-bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-placeholder outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 min-h-[60px]"
                   />
                 </div>
+                <div className="flex items-center gap-3">
+                  {svcPhotoPreview && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={svcPhotoPreview} alt="Service" className="h-12 w-12 rounded-xl object-cover" />
+                  )}
+                  <label className="flex w-fit cursor-pointer items-center gap-2 rounded-full border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-primary-500/50">
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                    {loading ? "Uploading..." : svcPhotoPreview ? "Change photo" : "Add photo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleSvcImageUpload}
+                      disabled={loading}
+                    />
+                  </label>
+                  {svcPhotoPreview && (
+                    <button
+                      onClick={() => {
+                        URL.revokeObjectURL(svcPhotoPreview);
+                        setSvcPhotoFile(null);
+                        setSvcPhotoPreview("");
+                      }}
+                      className="text-xs text-text-muted hover:text-danger transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
                 {error && <p className="text-sm text-danger">{error}</p>}
                 <Button onPress={handleCreateAndLink} isDisabled={loading}>
                   {loading ? "Adding..." : "Create & Link Service"}
@@ -352,21 +546,34 @@ export default function ProductDetailPage() {
             </p>
           ) : (
             <div className="grid gap-3">
-              {product.services.map((svc) => (
-                <div key={svc.serviceId} className="flex items-center justify-between p-4 rounded-xl border border-border-default bg-bg-muted">
-                  <div>
-                    <p className="font-medium text-sm text-text-primary">{svc.name}</p>
-                    <p className="text-xs text-text-muted mt-0.5">${svc.charges}</p>
+              {product.services.map((svc) => {
+                const svcInfo = poolMap.get(svc.serviceId);
+                return (
+                  <div key={svc.serviceId} className="flex items-center justify-between p-4 rounded-xl border border-border-default bg-bg-muted">
+                    <div className="flex items-center gap-3">
+                      {svcInfo?.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={svcInfo.image} alt={svc.name} className="h-9 w-9 rounded-lg object-cover" />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-500/15 text-primary-400">
+                          <Wrench className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm text-text-primary">{svc.name}</p>
+                        <p className="text-xs text-text-muted mt-0.5">${svc.charges}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleUnlinkService(svc.serviceId)}
+                      className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      title="Unlink service"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleUnlinkService(svc.serviceId)}
-                    className="p-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                    title="Unlink service"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

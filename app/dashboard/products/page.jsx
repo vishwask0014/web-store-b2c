@@ -4,7 +4,7 @@ import DashboardLayout from "@/app/components/common/dashboardLayout";
 import { Button } from "@/components/tailgrids/core/button";
 import { Input } from "@/components/tailgrids/core/input";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { uploadFile } from "@/app/lib/upload";
+import { compressImage, uploadFile } from "@/app/lib/upload";
 import Link from "next/link";
 import { Package, Plus, Wrench, AlertTriangle, X, Loader2 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
@@ -30,7 +30,7 @@ export default function ProductsPage() {
   const [pool, setPool] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [images, setImages] = useState([]);
-  const [imagesUploading, setImagesUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -75,6 +75,11 @@ export default function ProductsPage() {
     }
     setLoading(true);
     try {
+      const finalImages = [...images];
+      for (const p of pendingFiles) {
+        const dataUrl = await compressImage(p.file);
+        finalImages.push(await uploadFile(dataUrl, "products"));
+      }
       const res = await fetch(`/api/stores/${selectedStore}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,7 +88,7 @@ export default function ProductsPage() {
           price: Number(price),
           quantity: Number(quantity),
           description,
-          images,
+          images: finalImages,
           isServiceAvailable,
           services: selectedServices,
         }),
@@ -92,11 +97,13 @@ export default function ProductsPage() {
         const data = await res.json();
         throw new Error(data.error);
       }
+      pendingFiles.forEach((p) => URL.revokeObjectURL(p.url));
       setName("");
       setPrice("");
       setQuantity("");
       setDescription("");
       setImages([]);
+      setPendingFiles([]);
       setIsServiceAvailable(false);
       setSelectedServices([]);
       setShowForm(false);
@@ -108,38 +115,19 @@ export default function ProductsPage() {
     }
   };
 
-  const handleImagesSelect = async (e) => {
+  const handleImagesSelect = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setError("");
-    setImagesUploading(true);
-    try {
-      const urls = [];
-      for (const file of files) {
-        if (!file.type.startsWith("image/")) {
-          setError(`${file.name} is not an image and was skipped.`);
-          continue;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          setError(`${file.name} is over 5 MB and was skipped.`);
-          continue;
-        }
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const url = await uploadFile(dataUrl, "products");
-        urls.push(url);
-      }
-      setImages((prev) => [...prev, ...urls]);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setImagesUploading(false);
-      e.target.value = "";
+    const imgs = files.filter((f) => f.type.startsWith("image/"));
+    if (imgs.length !== files.length) {
+      setError("Some files were not images and were skipped.");
     }
+    setPendingFiles((prev) => [
+      ...prev,
+      ...imgs.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+    e.target.value = "";
   };
 
   const store = stores.find((s) => s.uniqueStoreId === selectedStore);
@@ -239,19 +227,35 @@ export default function ProductsPage() {
                           </button>
                         </div>
                       ))}
+                      {pendingFiles.map((p, i) => (
+                        <div
+                          key={`pending-${i}`}
+                          className="relative h-20 w-20 overflow-hidden rounded-xl border border-dashed border-primary-500/50"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.url} alt={`New photo ${i + 1}`} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              URL.revokeObjectURL(p.url);
+                              setPendingFiles((prev) => prev.filter((_, j) => j !== i));
+                            }}
+                            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-black/80"
+                            aria-label={`Remove new photo ${i + 1}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
                       <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-primary-500/50 hover:text-primary-400">
-                        {imagesUploading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Plus className="w-5 h-5" />
-                        )}
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                         <input
                           type="file"
                           accept="image/*"
                           multiple
                           className="hidden"
                           onChange={handleImagesSelect}
-                          disabled={imagesUploading}
+                          disabled={loading}
                         />
                       </label>
                     </div>
@@ -291,6 +295,10 @@ export default function ProductsPage() {
                                 }
                                 className="accent-primary-500 w-4 h-4"
                               />
+                              {s.image && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={s.image} alt={s.name} className="h-6 w-6 rounded-lg object-cover" />
+                              )}
                               <span className="text-sm text-text-primary">{s.name}</span>
                               <span className="text-xs text-text-muted ml-auto">${s.charges}</span>
                             </label>

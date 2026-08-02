@@ -20,10 +20,12 @@ import {
   Truck,
   Save,
   ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
-import { uploadFile } from "@/app/lib/upload";
+import { compressImage, uploadFile } from "@/app/lib/upload";
+import { ServiceIconFallback } from "@/app/components/dashboard/ServiceIcon";
 
 const MAX_SERVICES_PER_STORE = 7;
 const CATEGORY_SUGGESTIONS = ["Electronics", "Fashion", "Beauty", "Furniture", "Food", "Books", "Home Cleaning"];
@@ -52,6 +54,8 @@ export default function StorePage() {
   const [svcForm, setSvcForm] = useState({});
   const [svcError, setSvcError] = useState("");
   const [svcLoading, setSvcLoading] = useState(false);
+  const [svcPhotoFiles, setSvcPhotoFiles] = useState({});
+  const [svcPhotoPreviews, setSvcPhotoPreviews] = useState({});
 
   const [openDelivery, setOpenDelivery] = useState({});
   const [deliveryForm, setDeliveryForm] = useState({});
@@ -119,6 +123,12 @@ export default function StorePage() {
     }
     setSvcLoading(true);
     try {
+      let image = form.image || "";
+      const photoFile = svcPhotoFiles[storeId];
+      if (photoFile) {
+        const dataUrl = await compressImage(photoFile);
+        image = await uploadFile(dataUrl, "services");
+      }
       const res = await fetch(`/api/stores/${storeId}/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,12 +136,15 @@ export default function StorePage() {
           name: form.name,
           charges: Number(form.charges),
           description: form.description || "",
-          image: form.image || "",
+          image,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (svcPhotoPreviews[storeId]) URL.revokeObjectURL(svcPhotoPreviews[storeId]);
       setSvcForm((prev) => ({ ...prev, [storeId]: {} }));
+      setSvcPhotoFiles((prev) => ({ ...prev, [storeId]: null }));
+      setSvcPhotoPreviews((prev) => ({ ...prev, [storeId]: null }));
       setServicesByStore((prev) => ({ ...prev, [storeId]: [data, ...(prev[storeId] || [])] }));
     } catch (err) {
       setSvcError(err.message);
@@ -150,7 +163,7 @@ export default function StorePage() {
     }
   };
 
-  const handleSvcImage = async (storeId, e) => {
+  const handleSvcImage = (storeId, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSvcError("");
@@ -158,23 +171,10 @@ export default function StorePage() {
       setSvcError("Please choose an image file.");
       return;
     }
-    try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const url = await uploadFile(dataUrl, "services");
-      setSvcForm((prev) => ({
-        ...prev,
-        [storeId]: { ...(prev[storeId] || {}), image: url },
-      }));
-    } catch (err) {
-      setSvcError(err.message);
-    } finally {
-      e.target.value = "";
-    }
+    if (svcPhotoPreviews[storeId]) URL.revokeObjectURL(svcPhotoPreviews[storeId]);
+    setSvcPhotoFiles((prev) => ({ ...prev, [storeId]: file }));
+    setSvcPhotoPreviews((prev) => ({ ...prev, [storeId]: URL.createObjectURL(file) }));
+    e.target.value = "";
   };
 
   const toggleDelivery = (store) => {
@@ -544,8 +544,13 @@ export default function StorePage() {
                                       className="h-10 w-10 shrink-0 rounded-xl object-cover"
                                     />
                                   ) : (
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
-                                      <Wrench className="h-4 w-4" />
+                                    <div className="flex shrink-0 flex-col items-center gap-0.5">
+                                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
+                                        <ServiceIconFallback name={svc.name} category={s.category} className="h-4 w-4" />
+                                      </div>
+                                      <span className="rounded-full border border-white/10 bg-zinc-950 px-1 py-px text-[7px] font-medium uppercase tracking-wide text-zinc-500">
+                                        No image
+                                      </span>
                                     </div>
                                   )}
                                   <div>
@@ -606,22 +611,31 @@ export default function StorePage() {
                               className={inputClass}
                             />
                             <div className="flex items-center gap-3">
-                              {svcForm[s.uniqueStoreId]?.image && (
+                              {(svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image) && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                  src={svcForm[s.uniqueStoreId].image}
+                                  src={svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image}
                                   alt="Service"
                                   className="h-12 w-12 rounded-xl object-cover"
                                 />
                               )}
                               <label className="flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white">
-                                <ImagePlus className="h-4 w-4" />
-                                {svcForm[s.uniqueStoreId]?.image ? "Change photo" : "Add photo"}
+                                {svcLoading && svcPhotoFiles[s.uniqueStoreId] ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <ImagePlus className="h-4 w-4" />
+                                )}
+                                {svcLoading && svcPhotoFiles[s.uniqueStoreId]
+                                  ? "Uploading..."
+                                  : svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image
+                                  ? "Change photo"
+                                  : "Add photo"}
                                 <input
                                   type="file"
                                   accept="image/*"
                                   className="hidden"
                                   onChange={(e) => handleSvcImage(s.uniqueStoreId, e)}
+                                  disabled={svcLoading}
                                 />
                               </label>
                             </div>
@@ -631,7 +645,7 @@ export default function StorePage() {
                               disabled={svcLoading}
                               className="flex w-fit items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98] disabled:opacity-50"
                             >
-                              <Plus className="h-4 w-4" />
+                              {svcLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                               {svcLoading ? "Adding..." : "Add Service"}
                             </button>
                           </div>
