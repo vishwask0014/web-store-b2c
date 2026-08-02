@@ -1,11 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, Plus, Wrench, ChevronLeft, ChevronRight, Truck, Check } from "lucide-react";
+import {
+  Heart,
+  Plus,
+  Wrench,
+  ChevronLeft,
+  ChevronRight,
+  Truck,
+  Check,
+  Store,
+  Star,
+  ChevronRight as ChevronRightIcon,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import Stars from "./Stars";
-import ServiceSheet from "./ServiceSheet";
+import ProductSheet from "./ProductSheet";
 
 export default function ProductCard({ product, store }) {
   const router = useRouter();
@@ -70,6 +80,19 @@ export default function ProductCard({ product, store }) {
     setSheetOpen(true);
   };
 
+  const openSheet = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSheetOpen(true);
+  };
+
+  const onCardKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setSheetOpen(true);
+    }
+  };
+
   const prevImage = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -96,9 +119,12 @@ export default function ProductCard({ product, store }) {
 
   return (
     <div className="relative">
-      <Link
-        href={`/products/${product.uniqueProductId}`}
-        className="group relative flex flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface shadow-sm transition hover:-translate-y-0.5 hover:border-primary-500/40 hover:shadow-lg hover:shadow-primary-500/5"
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openSheet}
+        onKeyDown={onCardKeyDown}
+        className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-primary-500/40 hover:shadow-xl hover:shadow-primary-500/10 focus-visible:border-primary-500/60 focus-visible:ring-4 focus-visible:ring-primary-500/20"
       >
         <div
           className="relative aspect-square w-full overflow-hidden bg-bg-muted"
@@ -223,9 +249,9 @@ export default function ProductCard({ product, store }) {
             </p>
           )}
         </div>
-      </Link>
+      </div>
 
-      <ServiceSheet
+      <ProductSheet
         product={product}
         storeName={product.storeName || store?.name}
         open={sheetOpen}

@@ -124,11 +124,8 @@ export default function Home() {
             <Logo />
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-text-secondary md:flex">
-            <Link href="/products" className="transition-colors hover:text-text-primary">
-              Products
-            </Link>
-            <Link href="/stores" className="transition-colors hover:text-text-primary">
-              Stores
+            <Link href="/shop" className="transition-colors hover:text-text-primary">
+              Shop
             </Link>
             <Link
               href="#features"

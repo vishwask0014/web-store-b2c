@@ -76,8 +76,12 @@ export async function GET(req) {
         ...p,
         storeName: store?.name || "",
         storeCategory: store?.category || "",
+        storeDescription: store?.description || "",
+        storeLogo: store?.logo || "",
+        storeAddress: store?.address || {},
         deliveryEtaMinutes: deliveryEtaMinutes(store, userLoc),
         deliveryFee: store?.deliveryFee || 0,
+        freeDeliveryAbove: store?.freeDeliveryAbove || 0,
         serviceDetails,
         wishlisted: wishlistIds.has(p.uniqueProductId),
       };
