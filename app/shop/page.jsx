@@ -2,24 +2,9 @@
 
 import ShopLayout from "@/app/components/common/ShopLayout";
 import ProductCard from "@/app/components/shop/ProductCard";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useEffect, useState } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
-
-const CATEGORIES = [
-  { key: "", emoji: "🛍️", label: "All" },
-  { key: "grocery", emoji: "🛒", label: "Grocery" },
-  { key: "vegetables", emoji: "🥬", label: "Vegetables" },
-  { key: "fruits", emoji: "🍎", label: "Fruits" },
-  { key: "dairy", emoji: "🥛", label: "Dairy" },
-  { key: "beverages", emoji: "🧃", label: "Beverages" },
-  { key: "snacks", emoji: "🍿", label: "Snacks" },
-  { key: "bakery", emoji: "🥖", label: "Bakery" },
-  { key: "electronics", emoji: "📱", label: "Electronics" },
-  { key: "clothing", emoji: "👕", label: "Clothing" },
-  { key: "home", emoji: "🏠", label: "Home" },
-  { key: "beauty", emoji: "💄", label: "Beauty" },
-  { key: "pharmacy", emoji: "💊", label: "Pharmacy" },
-];
+import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 
 const SORTS = [
   { key: "newest", label: "Newest first" },
@@ -30,10 +15,10 @@ const SORTS = [
 ];
 
 export default function ShopPage() {
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
   const [sort, setSort] = useState("newest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,7 +31,6 @@ export default function ShopPage() {
       try {
         const params = new URLSearchParams({ sort });
         if (query) params.set("search", query);
-        if (category) params.set("category", category);
         const res = await fetch(`/api/products?${params.toString()}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to load products.");
@@ -61,7 +45,7 @@ export default function ShopPage() {
     return () => {
       cancelled = true;
     };
-  }, [query, category, sort]);
+  }, [query, sort]);
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -71,52 +55,52 @@ export default function ShopPage() {
   return (
     <ShopLayout>
       <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Shop</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Everything you need, delivered fast
-          </p>
+        <div className="relative overflow-hidden rounded-3xl border border-border-default bg-gradient-to-br from-bg-surface via-bg-surface to-primary-500/10 px-6 py-8 sm:px-10">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-primary-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -left-16 h-56 w-56 rounded-full bg-primary-500/10 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary-400">
+                <Sparkles className="h-3.5 w-3.5" />
+                {user?.name ? `Welcome back, ${user.name.split(" ")[0]}` : "Welcome back"}
+              </p>
+              <h1 className="mt-1.5 text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">
+                Shop
+              </h1>
+              <p className="mt-1.5 text-sm text-text-muted">
+                Everything you need, delivered fast
+              </p>
+            </div>
+
+            <form onSubmit={submitSearch} className="relative max-w-xl">
+              <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-text-muted" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products, categories…"
+                className="w-full rounded-2xl border border-border-default bg-bg-primary/80 py-3.5 pl-11 pr-11 text-sm outline-none backdrop-blur transition focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setQuery("");
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-text-muted hover:bg-bg-muted"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </form>
+          </div>
         </div>
 
-        <form onSubmit={submitSearch} className="relative">
-          <Search className="absolute left-3.5 top-1/2 w-4 h-4 -translate-y-1/2 text-text-muted" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products, categories…"
-            className="w-full rounded-2xl border border-border-default bg-bg-surface py-3 pl-10 pr-10 text-sm outline-none transition focus:border-primary-500"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setQuery("");
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-text-muted hover:bg-bg-muted"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </form>
-
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setCategory(c.key)}
-                className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors ${
-                  category === c.key
-                    ? "bg-primary-500 text-white"
-                    : "border border-border-default bg-bg-surface text-text-secondary hover:bg-bg-muted"
-                }`}
-              >
-                <span className="mr-1">{c.emoji}</span>
-                {c.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-text-muted">
+            {loading ? "Loading products…" : `${products.length} product${products.length === 1 ? "" : "s"}`}
+          </p>
           <div className="relative shrink-0">
             <SlidersHorizontal className="pointer-events-none absolute left-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-text-muted" />
             <select

@@ -124,31 +124,16 @@ export default function Home() {
             <Logo />
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-text-secondary md:flex">
-            <Link href="/shop" className="transition-colors hover:text-text-primary">
+            <Link
+              href="/shop"
+              className="font-semibold text-primary-400 transition-colors hover:text-primary-500"
+            >
               Shop
-            </Link>
-            <Link
-              href="#features"
-              className="transition-colors hover:text-text-primary"
-            >
-              Features
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="transition-colors hover:text-text-primary"
-            >
-              How It Works
-            </Link>
-            <Link
-              href="#categories"
-              className="transition-colors hover:text-text-primary"
-            >
-              Categories
             </Link>
           </nav>
           <Link href="/auth">
             <Button variant="primary" size="sm">
-              Get Started
+              Start Selling
             </Button>
           </Link>
         </div>
