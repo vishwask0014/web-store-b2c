@@ -33,7 +33,8 @@ export default function SignIn() {
             const idToken = await cred.user.getIdToken();
             await useAuthStore.getState().login(idToken, name);
 
-            router.replace(redirect);
+            const role = useAuthStore.getState().user?.role;
+            router.replace(role === "customer" ? "/shop" : redirect);
         } catch (err) {
             setError(err.message);
         } finally {

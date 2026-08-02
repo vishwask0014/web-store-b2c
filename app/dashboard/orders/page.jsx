@@ -3,9 +3,11 @@
 import DashboardLayout from "@/app/components/common/dashboardLayout";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useEffect, useRef, useState } from "react";
-import { Package, ShoppingBag, CreditCard, ChevronDown, Check, Printer } from "lucide-react";
+import { Package, ShoppingBag, CreditCard, ChevronDown, Check, Printer, Truck } from "lucide-react";
 import { errorClass } from "@/app/components/AuthForm/authStyles";
 import InvoiceModal from "@/components/dashboard/InvoiceModal";
+import ItemTimeline from "@/components/dashboard/ItemTimeline";
+import TrackingModal from "@/components/dashboard/TrackingModal";
 
 const STATUS_STYLES = {
   pending: "bg-amber-500/15 text-amber-400",
@@ -79,6 +81,7 @@ export default function SellerOrdersPage() {
   const [openStatusFor, setOpenStatusFor] = useState("");
   const [updating, setUpdating] = useState("");
   const [invoiceOrder, setInvoiceOrder] = useState(null);
+  const [trackingOrder, setTrackingOrder] = useState(null);
 
   const fetchOrders = async () => {
     if (!user?.uid) return;
@@ -183,6 +186,14 @@ export default function SellerOrdersPage() {
                     <p className="text-lg font-semibold text-zinc-100">${o.total.toFixed(2)}</p>
                     <button
                       type="button"
+                      onClick={() => setTrackingOrder(o)}
+                      title="Add tracking"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-zinc-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-400"
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setInvoiceOrder(o)}
                       title="Print slip / invoice"
                       className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-zinc-400 transition-colors hover:border-blue-500/40 hover:text-blue-400"
@@ -205,20 +216,44 @@ export default function SellerOrdersPage() {
 
                 <div className="mb-3 grid gap-2">
                   {o.items.map((i, idx) => (
-                    <div key={idx} className="flex items-center gap-3 text-sm">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-                        <Package className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-zinc-200">{i.name}</p>
-                        <p className="text-xs text-zinc-500">
-                          {i.storeName} · {i.quantity} × ${i.price}
-                          {i.serviceName && ` + ${i.serviceName} ($${i.serviceCharge})`}
+                    <div
+                      key={idx}
+                      className={`rounded-xl border p-3 ${
+                        i.cancelledAt ? "border-red-500/20 bg-red-500/5" : "border-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
+                          <Package className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-zinc-200">{i.name}</p>
+                          <p className="text-xs text-zinc-500">
+                            {i.storeName} · {i.quantity} × ${i.price}
+                            {i.serviceName && ` + ${i.serviceName} ($${i.serviceCharge})`}
+                          </p>
+                        </div>
+                        <p className="font-medium text-zinc-200">
+                          ${((i.price + (i.serviceCharge || 0)) * i.quantity).toFixed(2)}
                         </p>
                       </div>
-                      <p className="font-medium text-zinc-200">
-                        ${((i.price + (i.serviceCharge || 0)) * i.quantity).toFixed(2)}
-                      </p>
+                      {o.status !== "cancelled" && !i.cancelledAt && <ItemTimeline item={i} />}
+                      {i.shippedAt && o.status !== "cancelled" && (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          Shipped{" "}
+                          {i.tracking?.courier && (
+                            <>
+                              via <b className="text-zinc-300">{i.tracking.courier}</b>
+                            </>
+                          )}{" "}
+                          {i.tracking?.trackingNumber && (
+                            <>
+                              · tracking <b className="text-zinc-300">{i.tracking.trackingNumber}</b>
+                            </>
+                          )}{" "}
+                          on {new Date(i.shippedAt).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -242,12 +277,38 @@ export default function SellerOrdersPage() {
                     </span>
                   )}
                 </div>
+
+                {o.cancellation && (
+                  <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                    Order cancelled on {new Date(o.cancellation.at).toLocaleDateString()} by{" "}
+                    {o.cancellation.by} — {o.cancellation.reason}
+                    {o.cancellation.refundNote ? ` ${o.cancellation.refundNote}` : ""}
+                  </p>
+                )}
+
+                {(o.discount > 0 || o.deliveryFee > 0) && (
+                  <div className="mt-3 grid gap-1 border-t border-white/5 pt-3 text-xs text-zinc-500">
+                    {o.discount > 0 && (
+                      <p className="flex justify-between">
+                        <span>Coupon {o.couponCode}</span>
+                        <span className="text-emerald-400">-${o.discount.toFixed(2)}</span>
+                      </p>
+                    )}
+                    <p className="flex justify-between">
+                      <span>Delivery fee</span>
+                      <span>${(o.deliveryFee || 0).toFixed(2)}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
 
         <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
+        {trackingOrder && (
+          <TrackingModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
+        )}
       </div>
     </DashboardLayout>
   );

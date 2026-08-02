@@ -11,6 +11,13 @@ const OrderItemSchema = new Schema(
     serviceId: { type: String, default: "" },
     serviceName: { type: String, default: "" },
     serviceCharge: { type: Number, default: 0, min: 0 },
+    tracking: {
+      courier: { type: String, default: "" },
+      trackingNumber: { type: String, default: "" },
+      estimatedDelivery: { type: String, default: "" },
+    },
+    shippedAt: { type: String, default: "" },
+    deliveredAt: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -55,6 +62,9 @@ const OrderSchema = new Schema(
     items: { type: [OrderItemSchema], default: [] },
     subtotal: { type: Number, default: 0, min: 0 },
     serviceTotal: { type: Number, default: 0, min: 0 },
+    discount: { type: Number, default: 0, min: 0 },
+    couponCode: { type: String, default: "" },
+    deliveryFee: { type: Number, default: 0, min: 0 },
     total: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: "USD", uppercase: true },
     deliveryLocation: { type: LocationSchema, default: () => ({}) },
@@ -69,6 +79,19 @@ const OrderSchema = new Schema(
     paid: { type: Boolean, default: false },
     razorpayOrderId: { type: String, default: "" },
     razorpayPaymentId: { type: String, default: "" },
+    shipping: {
+      courier: { type: String, default: "" },
+      trackingNumber: { type: String, default: "" },
+      estimatedDelivery: { type: String, default: "" },
+    },
+    shippedAt: { type: String, default: "" },
+    deliveredAt: { type: String, default: "" },
+    cancellation: {
+      reason: { type: String, default: "" },
+      by: { type: String, default: "" },
+      at: { type: String, default: "" },
+      refundNote: { type: String, default: "" },
+    },
     settlements: { type: [SettlementSchema], default: [] },
     autoPaid: { type: Boolean, default: false },
     status: {

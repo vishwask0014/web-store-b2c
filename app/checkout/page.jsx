@@ -51,6 +51,31 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
   const [placedOrder, setPlacedOrder] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("b2c_coupon") || "null");
+      return saved?.code ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  const [storeMap, setStoreMap] = useState({});
+
+  useEffect(() => {
+    fetch("/api/stores")
+      .then((r) => r.json())
+      .then((list) => {
+        const map = {};
+        for (const s of list) {
+          map[s.uniqueStoreId] = {
+            deliveryFee: s.deliveryFee || 0,
+            freeDeliveryAbove: s.freeDeliveryAbove || 0,
+          };
+        }
+        setStoreMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -70,7 +95,22 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const serviceTotal = items.reduce((sum, i) => sum + (i.serviceCharge || 0) * i.quantity, 0);
-  const total = subtotal + serviceTotal;
+  const deliveryFee = (() => {
+    const byStore = {};
+    for (const item of items) {
+      if (!item.storeId) continue;
+      byStore[item.storeId] = (byStore[item.storeId] || 0) + item.price * item.quantity;
+    }
+    let fee = 0;
+    for (const [storeId, storeSubtotal] of Object.entries(byStore)) {
+      const s = storeMap[storeId];
+      if (!s) continue;
+      if (s.deliveryFee > 0 && storeSubtotal < s.freeDeliveryAbove) fee += s.deliveryFee;
+    }
+    return fee;
+  })();
+  const discount = appliedCoupon?.discount || 0;
+  const total = Math.max(0, subtotal + serviceTotal - discount + deliveryFee);
 
   const placeOrderManual = async () => {
     setError("");
@@ -80,11 +120,18 @@ export default function CheckoutPage() {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid, location, paymentMethodId, autoPay }),
+        body: JSON.stringify({
+          userId: user.uid,
+          location,
+          paymentMethodId,
+          autoPay,
+          couponCode: appliedCoupon?.code || "",
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPlacedOrder(data);
+      localStorage.removeItem("b2c_coupon");
       fetchCart(user.uid);
     } catch (err) {
       setError(err.message);
@@ -97,7 +144,14 @@ export default function CheckoutPage() {
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.uid, location, razorpayOrderId, razorpayPaymentId, amountMinor }),
+      body: JSON.stringify({
+        userId: user.uid,
+        location,
+        razorpayOrderId,
+        razorpayPaymentId,
+        amountMinor,
+        couponCode: appliedCoupon?.code || "",
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -117,7 +171,7 @@ export default function CheckoutPage() {
       const orderRes = await fetch("/api/payments/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.uid }),
+        body: JSON.stringify({ userId: user.uid, couponCode: appliedCoupon?.code || "" }),
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) throw new Error(orderData.error);
@@ -187,6 +241,7 @@ export default function CheckoutPage() {
     try {
       const order = await createOrderWithPayment("", `pay_test_${Date.now()}`, Math.round(total * 100));
       setPlacedOrder(order);
+      localStorage.removeItem("b2c_coupon");
       fetchCart(user.uid);
     } catch (err) {
       setError(err.message);
@@ -454,6 +509,16 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-zinc-400">
                 <span>Services</span>
                 <span>${serviceTotal.toFixed(2)}</span>
+              </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-emerald-400">
+                  <span>Coupon {appliedCoupon.code}</span>
+                  <span>-${discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-zinc-400">
+                <span>Delivery</span>
+                <span>${deliveryFee.toFixed(2)}</span>
               </div>
               <div className="flex justify-between pt-1 text-base font-semibold text-zinc-100">
                 <span>Total</span>

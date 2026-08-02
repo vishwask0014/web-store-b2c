@@ -32,6 +32,8 @@ const ProductSchema = new Schema(
       },
     },
     isActive: { type: Boolean, default: true },
+    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );

@@ -17,6 +17,8 @@ import {
   Package,
   ShoppingBag,
   Check,
+  Truck,
+  Save,
 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
@@ -48,6 +50,12 @@ export default function StorePage() {
   const [svcForm, setSvcForm] = useState({});
   const [svcError, setSvcError] = useState("");
   const [svcLoading, setSvcLoading] = useState(false);
+
+  const [openDelivery, setOpenDelivery] = useState({});
+  const [deliveryForm, setDeliveryForm] = useState({});
+  const [deliveryMsg, setDeliveryMsg] = useState("");
+  const [deliveryError, setDeliveryError] = useState("");
+  const [deliverySaving, setDeliverySaving] = useState("");
 
   const fetchStores = async () => {
     if (!user?.uid) return;
@@ -136,6 +144,51 @@ export default function StorePage() {
         ...prev,
         [storeId]: (prev[storeId] || []).filter((s) => s._id !== serviceId),
       }));
+    }
+  };
+
+  const toggleDelivery = (store) => {
+    setDeliveryMsg("");
+    setDeliveryError("");
+    setDeliveryForm((prev) => ({
+      ...prev,
+      [store.uniqueStoreId]: prev[store.uniqueStoreId] || {
+        deliveryMinutes: store.deliveryMinutes || 20,
+        deliveryFee: store.deliveryFee || 0,
+        freeDeliveryAbove: store.freeDeliveryAbove || 0,
+      },
+    }));
+    setOpenDelivery((prev) => ({
+      ...prev,
+      [store.uniqueStoreId]: !prev[store.uniqueStoreId],
+    }));
+  };
+
+  const handleSaveDelivery = async (storeId) => {
+    setDeliveryMsg("");
+    setDeliveryError("");
+    const form = deliveryForm[storeId];
+    if (!form) return;
+    setDeliverySaving(storeId);
+    try {
+      const res = await fetch(`/api/stores/${storeId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deliveryMinutes: Math.min(120, Math.max(5, Number(form.deliveryMinutes) || 20)),
+          deliveryFee: Math.max(0, Number(form.deliveryFee) || 0),
+          freeDeliveryAbove: Math.max(0, Number(form.freeDeliveryAbove) || 0),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setDeliveryMsg("Delivery settings saved.");
+      setStores((prev) => prev.map((s) => (s.uniqueStoreId === storeId ? data : s)));
+      setTimeout(() => setDeliveryMsg(""), 2500);
+    } catch (err) {
+      setDeliveryError(err.message);
+    } finally {
+      setDeliverySaving("");
     }
   };
 
@@ -323,20 +376,111 @@ export default function StorePage() {
                     </div>
                   </div>
                   {!s.disabled && (
-                    <button
-                      onClick={() =>
-                        setOpenServices((prev) => ({
-                          ...prev,
-                          [s.uniqueStoreId]: !prev[s.uniqueStoreId],
-                        }))
-                      }
-                      className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
-                    >
-                      {openServices[s.uniqueStoreId] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      Services ({(servicesByStore[s.uniqueStoreId] || []).length}/{MAX_SERVICES_PER_STORE})
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => toggleDelivery(s)}
+                        className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                      >
+                        {openDelivery[s.uniqueStoreId] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        <Truck className="h-4 w-4" />
+                        Delivery
+                      </button>
+                      <button
+                        onClick={() =>
+                          setOpenServices((prev) => ({
+                            ...prev,
+                            [s.uniqueStoreId]: !prev[s.uniqueStoreId],
+                          }))
+                        }
+                        className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                      >
+                        {openServices[s.uniqueStoreId] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        Services ({(servicesByStore[s.uniqueStoreId] || []).length}/{MAX_SERVICES_PER_STORE})
+                      </button>
+                    </div>
                   )}
                 </div>
+
+                <AnimatePresence>
+                  {!s.disabled && openDelivery[s.uniqueStoreId] && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-5 border-t border-white/5 pt-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Truck className="h-4 w-4 text-zinc-400" />
+                          <p className="text-sm font-medium text-zinc-200">Delivery &amp; quick commerce</p>
+                          <p className="text-xs text-zinc-600">Shown to customers on product cards</p>
+                        </div>
+                        <div className="grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div>
+                            <label className={labelClass}>Delivery time (min)</label>
+                            <input
+                              type="number"
+                              min="5"
+                              max="120"
+                              value={deliveryForm[s.uniqueStoreId]?.deliveryMinutes ?? s.deliveryMinutes ?? 20}
+                              onChange={(e) =>
+                                setDeliveryForm((prev) => ({
+                                  ...prev,
+                                  [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), deliveryMinutes: e.target.value },
+                                }))
+                              }
+                              className={`${inputClass} mt-1`}
+                            />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Delivery fee ($)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={deliveryForm[s.uniqueStoreId]?.deliveryFee ?? s.deliveryFee ?? 0}
+                              onChange={(e) =>
+                                setDeliveryForm((prev) => ({
+                                  ...prev,
+                                  [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), deliveryFee: e.target.value },
+                                }))
+                              }
+                              className={`${inputClass} mt-1`}
+                            />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Free delivery above ($)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={deliveryForm[s.uniqueStoreId]?.freeDeliveryAbove ?? s.freeDeliveryAbove ?? 0}
+                              onChange={(e) =>
+                                setDeliveryForm((prev) => ({
+                                  ...prev,
+                                  [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), freeDeliveryAbove: e.target.value },
+                                }))
+                              }
+                              className={`${inputClass} mt-1`}
+                            />
+                          </div>
+                        </div>
+                        {deliveryMsg && (
+                          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                            <Check className="h-3.5 w-3.5" /> {deliveryMsg}
+                          </p>
+                        )}
+                        {deliveryError && <p className={errorClass + " mt-3"}>{deliveryError}</p>}
+                        <button
+                          onClick={() => handleSaveDelivery(s.uniqueStoreId)}
+                          disabled={deliverySaving === s.uniqueStoreId}
+                          className="mt-3 flex w-fit items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98] disabled:opacity-50"
+                        >
+                          <Save className="h-4 w-4" />
+                          {deliverySaving === s.uniqueStoreId ? "Saving..." : "Save delivery settings"}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <AnimatePresence>
                   {!s.disabled && openServices[s.uniqueStoreId] && (

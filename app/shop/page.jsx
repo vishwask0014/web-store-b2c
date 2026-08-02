@@ -1,272 +1,166 @@
 "use client";
 
 import ShopLayout from "@/app/components/common/ShopLayout";
-import { useAuth } from "@/app/providers/AuthProvider";
-import { useCartStore } from "@/app/stores/cartStore";
+import ProductCard from "@/app/components/shop/ProductCard";
 import { useEffect, useState } from "react";
-import { Package, Wrench, ShoppingCart, Check, Store, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
+
+const CATEGORIES = [
+  { key: "", emoji: "🛍️", label: "All" },
+  { key: "grocery", emoji: "🛒", label: "Grocery" },
+  { key: "vegetables", emoji: "🥬", label: "Vegetables" },
+  { key: "fruits", emoji: "🍎", label: "Fruits" },
+  { key: "dairy", emoji: "🥛", label: "Dairy" },
+  { key: "beverages", emoji: "🧃", label: "Beverages" },
+  { key: "snacks", emoji: "🍿", label: "Snacks" },
+  { key: "bakery", emoji: "🥖", label: "Bakery" },
+  { key: "electronics", emoji: "📱", label: "Electronics" },
+  { key: "clothing", emoji: "👕", label: "Clothing" },
+  { key: "home", emoji: "🏠", label: "Home" },
+  { key: "beauty", emoji: "💄", label: "Beauty" },
+  { key: "pharmacy", emoji: "💊", label: "Pharmacy" },
+];
+
+const SORTS = [
+  { key: "newest", label: "Newest first" },
+  { key: "popular", label: "Most popular" },
+  { key: "rating", label: "Top rated" },
+  { key: "price_asc", label: "Price: low to high" },
+  { key: "price_desc", label: "Price: high to low" },
+];
 
 export default function ShopPage() {
-  const { user } = useAuth();
-  const { addItem } = useCartStore();
-
-  const [stores, setStores] = useState([]);
   const [products, setProducts] = useState([]);
-  const [selectedStore, setSelectedStore] = useState(null);
-  const [selected, setSelected] = useState({});
-  const [added, setAdded] = useState({});
-  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
+  const [sort, setSort] = useState("newest");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
+      setLoading(true);
+      setError("");
       try {
-        const res = await fetch("/api/stores");
-        const storeList = (await res.json()).filter((s) => !s.disabled);
-        setStores(storeList);
-        const all = [];
-        await Promise.all(
-          storeList.map(async (s) => {
-            try {
-              const r = await fetch(`/api/stores/${s.uniqueStoreId}/products`);
-              const products = await r.json();
-              all.push(
-                ...(products || [])
-                  .filter((p) => p.isActive !== false)
-                  .map((p) => ({ ...p, storeName: s.name, storeCategory: s.category }))
-              );
-            } catch {
-              // skip store
-            }
-          })
-        );
-        setProducts(all.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")));
-      } catch {
-        setError("Failed to load products.");
+        const params = new URLSearchParams({ sort });
+        if (query) params.set("search", query);
+        if (category) params.set("category", category);
+        const res = await fetch(`/api/products?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load products.");
+        if (!cancelled) setProducts(data.products || []);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [query, category, sort]);
 
-  const handleAddToCart = async (product, serviceId) => {
-    setError("");
-    if (!user) return;
-    const res = await addItem(user.uid, {
-      productId: product.uniqueProductId,
-      storeName: product.storeName || "",
-      serviceId: serviceId || "",
-      quantity: 1,
-    });
-    if (res.ok) {
-      setAdded((prev) => ({ ...prev, [`${product.uniqueProductId}|${serviceId || ""}`]: true }));
-      setTimeout(() => {
-        setAdded((prev) => ({ ...prev, [`${product.uniqueProductId}|${serviceId || ""}`]: false }));
-      }, 1500);
-    } else {
-      setError(res.error);
-    }
+  const submitSearch = (e) => {
+    e.preventDefault();
+    setQuery(search.trim());
   };
-
-  const visible = selectedStore
-    ? products.filter((p) => p.storeId === selectedStore)
-    : products;
 
   return (
     <ShopLayout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Shop</h1>
-          <p className="text-sm text-text-muted mt-1">
-            Browse products and add them to your cart
-            {selectedStore && stores.find((s) => s.uniqueStoreId === selectedStore)
-              ? ` from ${stores.find((s) => s.uniqueStoreId === selectedStore).name}`
-              : ""}
+          <p className="mt-1 text-sm text-text-muted">
+            Everything you need, delivered fast
           </p>
         </div>
 
-        {error && (
-          <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">{error}</div>
-        )}
+        <form onSubmit={submitSearch} className="relative">
+          <Search className="absolute left-3.5 top-1/2 w-4 h-4 -translate-y-1/2 text-text-muted" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search products, categories…"
+            className="w-full rounded-2xl border border-border-default bg-bg-surface py-3 pl-10 pr-10 text-sm outline-none transition focus:border-primary-500"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setQuery("");
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-text-muted hover:bg-bg-muted"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </form>
 
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-          <aside className="lg:sticky lg:top-20">
-            <div className="rounded-2xl border border-border-default bg-bg-surface p-4">
-              <div className="flex items-center gap-2 mb-3 px-1">
-                <Store className="w-4 h-4 text-text-secondary" />
-                <h2 className="text-sm font-semibold text-text-primary">Stores</h2>
-                <span className="text-xs text-text-muted ml-auto">{stores.length}</span>
-              </div>
-              {loading ? (
-                <p className="text-sm text-text-muted px-1">Loading...</p>
-              ) : stores.length === 0 ? (
-                <p className="text-sm text-text-muted px-1">No stores yet.</p>
-              ) : (
-                <div className="grid gap-1.5">
-                  <button
-                    onClick={() => setSelectedStore(null)}
-                    className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      selectedStore === null
-                        ? "bg-primary-500/15 text-primary-400"
-                        : "text-text-secondary hover:bg-bg-muted hover:text-text-primary"
-                    }`}
-                  >
-                    <Package className="w-4 h-4 shrink-0" />
-                    <span className="flex-1 text-left">All Stores</span>
-                    <span className="text-xs text-text-muted">{products.length}</span>
-                  </button>
-                  {stores.map((s) => {
-                    const count = products.filter((p) => p.storeId === s.uniqueStoreId).length;
-                    return (
-                      <button
-                        key={s.uniqueStoreId}
-                        onClick={() => setSelectedStore(s.uniqueStoreId)}
-                        className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          selectedStore === s.uniqueStoreId
-                            ? "bg-primary-500/15 text-primary-400"
-                            : "text-text-secondary hover:bg-bg-muted hover:text-text-primary"
-                        }`}
-                      >
-                        <Store className="w-4 h-4 shrink-0" />
-                        <span className="flex-1 text-left truncate">{s.name}</span>
-                        <span className="text-xs text-text-muted">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {selectedStore && (
-              <div className="mt-4 rounded-2xl border border-border-default bg-bg-surface p-4">
-                {(() => {
-                  const s = stores.find((st) => st.uniqueStoreId === selectedStore);
-                  if (!s) return null;
-                  return (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-primary-500/15 flex items-center justify-center text-primary-400">
-                          <Store className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-text-primary">{s.name}</p>
-                          <p className="text-xs text-text-muted">{s.category}</p>
-                        </div>
-                      </div>
-                      {s.description && (
-                        <p className="text-xs text-text-secondary leading-relaxed">{s.description}</p>
-                      )}
-                      <div className="grid gap-1.5 text-xs text-text-muted">
-                        {s.phoneNumber && <p>{s.phoneNumber}</p>}
-                        {s.address?.city && (
-                          <p className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {s.address.city}
-                            {s.address.state ? `, ${s.address.state}` : ""}
-                            {s.address.country ? `, ${s.address.country}` : ""}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-          </aside>
-
-          <div className="flex flex-col gap-4 min-w-0">
-            {loading ? (
-              <div className="text-sm text-text-muted">Loading products...</div>
-            ) : visible.length === 0 ? (
-              <div className="rounded-2xl border border-border-default bg-bg-surface p-8 text-center text-sm text-text-muted">
-                {selectedStore ? "This store has no products yet." : "No products available yet. Check back soon."}
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {visible.map((p) => (
-                  <div key={p._id} className="rounded-2xl border border-border-default bg-bg-surface p-5 flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary-500/15 flex items-center justify-center text-primary-400">
-                        <Package className="w-5 h-5" />
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-text-primary">{p.currency === "INR" ? "₹" : "$"}{p.price}</p>
-                        {p.discountPrice != null && (
-                          <p className="text-xs text-text-muted line-through">${p.discountPrice}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="font-medium text-text-primary">{p.name}</p>
-                      <p className="text-xs text-text-muted mt-1 line-clamp-2">{p.description}</p>
-                      {p.storeName && (
-                        <p className="text-xs text-primary-400 mt-1.5 flex items-center gap-1">
-                          <Store className="w-3 h-3" /> Sold by {p.storeName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-xs text-text-muted">
-                      <span>{p.quantity} in stock</span>
-                      {p.unit && <span> · {p.unit}</span>}
-                    </div>
-
-                    {p.services?.length > 0 && (
-                      <div className="grid gap-1.5">
-                        <p className="text-xs font-medium text-text-secondary flex items-center gap-1">
-                          <Wrench className="w-3 h-3" /> Add a service
-                        </p>
-                        {p.services.map((s) => (
-                          <label
-                            key={s.serviceId}
-                            className="flex items-center gap-2 p-2 rounded-lg border border-border-default bg-bg-muted cursor-pointer hover:border-primary-500/40 transition-colors"
-                          >
-                            <input
-                              type="radio"
-                              name={`service-${p.uniqueProductId}`}
-                              checked={selected[p.uniqueProductId] === s.serviceId}
-                              onChange={() =>
-                                setSelected((prev) => ({ ...prev, [p.uniqueProductId]: s.serviceId }))
-                              }
-                              className="accent-primary-500"
-                            />
-                            <span className="text-xs text-text-primary">{s.name}</span>
-                            <span className="text-xs text-text-muted ml-auto">+${s.charges}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => handleAddToCart(p, selected[p.uniqueProductId])}
-                      disabled={p.quantity <= 0}
-                      className={`mt-auto flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
-                        added[`${p.uniqueProductId}|${selected[p.uniqueProductId] || ""}`]
-                          ? "bg-success/15 text-success"
-                          : "bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-40"
-                      }`}
-                    >
-                      {added[`${p.uniqueProductId}|${selected[p.uniqueProductId] || ""}`] ? (
-                        <>
-                          <Check className="w-4 h-4" /> Added
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-4 h-4" />
-                          {p.quantity <= 0 ? "Out of stock" : "Add to Cart"}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setCategory(c.key)}
+                className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                  category === c.key
+                    ? "bg-primary-500 text-white"
+                    : "border border-border-default bg-bg-surface text-text-secondary hover:bg-bg-muted"
+                }`}
+              >
+                <span className="mr-1">{c.emoji}</span>
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative shrink-0">
+            <SlidersHorizontal className="pointer-events-none absolute left-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-text-muted" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="appearance-none rounded-xl border border-border-default bg-bg-surface py-2 pl-8 pr-6 text-xs font-medium text-text-secondary outline-none"
+            >
+              {SORTS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <p className="text-xs text-text-muted flex items-center gap-1">
-          <Wrench className="w-3 h-3" /> Products with linked services show extra service options — add them alongside the product.
-        </p>
+        {error && (
+          <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-[3/4] animate-pulse rounded-2xl bg-bg-muted"
+              />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="rounded-2xl border border-border-default bg-bg-surface p-8 text-center text-sm text-text-muted">
+            {query
+              ? `No products match "${query}".`
+              : "No products available yet. Check back soon."}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {products.map((p) => (
+              <ProductCard key={p.uniqueProductId} product={p} />
+            ))}
+          </div>
+        )}
       </div>
     </ShopLayout>
   );

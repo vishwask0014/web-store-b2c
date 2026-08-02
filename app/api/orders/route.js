@@ -1,7 +1,6 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Order from "@/app/models/Order";
 import Cart from "@/app/models/Cart";
-import Product from "@/app/models/Product";
 import Store from "@/app/models/Store";
 import User from "@/app/models/User";
 import { NextResponse } from "next/server";
@@ -9,6 +8,7 @@ import crypto from "crypto";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
 import { createNotification } from "@/app/lib/notify";
 import { getRazorpay, isRazorpayConfigured, buildSettlements, isSimulatedPaymentId, simulatedPayment } from "@/app/lib/razorpay";
+import { computeCartTotals, findCoupon, couponError, computeCouponDiscount } from "@/app/lib/checkout";
 
 export async function GET(req) {
   try {
@@ -46,7 +46,7 @@ export async function POST(req) {
 
     await connectDB();
     const body = await req.json();
-    const { userId, location, paymentMethodId, autoPay, razorpayOrderId, razorpayPaymentId, amountMinor } = body;
+    const { userId, location, paymentMethodId, autoPay, razorpayOrderId, razorpayPaymentId, amountMinor, couponCode } = body;
 
     if (!userId || userId !== session.uid) {
       return NextResponse.json({ error: "Invalid user." }, { status: 403 });
@@ -100,39 +100,20 @@ export async function POST(req) {
       );
     }
 
-    const items = [];
-    let subtotal = 0;
-    let serviceTotal = 0;
+    const { items, subtotal, serviceTotal, deliveryFee } = await computeCartTotals(cart.items);
 
-    for (const item of cart.items) {
-      const product = await Product.findOne({ uniqueProductId: item.productId });
-      if (!product || product.isActive === false) {
-        return NextResponse.json(
-          { error: `Product "${item.name}" is no longer available.` },
-          { status: 400 }
-        );
+    let coupon = null;
+    let discount = 0;
+    if (couponCode) {
+      coupon = await findCoupon(couponCode);
+      const invalid = couponError(coupon, subtotal);
+      if (invalid) {
+        return NextResponse.json({ error: invalid }, { status: 400 });
       }
-      const qty = Math.min(item.quantity, product.quantity);
-      if (qty <= 0) {
-        return NextResponse.json(
-          { error: `Product "${item.name}" is out of stock.` },
-          { status: 400 }
-        );
-      }
-      items.push({
-        storeId: product.storeId,
-        storeName: item.storeName || product.storeId,
-        productId: product.uniqueProductId,
-        name: product.name,
-        price: product.price,
-        quantity: qty,
-        serviceId: item.serviceId || "",
-        serviceName: item.serviceName || "",
-        serviceCharge: item.serviceCharge || 0,
-      });
-      subtotal += product.price * qty;
-      serviceTotal += (item.serviceCharge || 0) * qty;
+      discount = computeCouponDiscount(coupon, subtotal);
     }
+
+    const total = Math.max(0, subtotal + serviceTotal - discount + deliveryFee);
 
     const order = await Order.create({
       orderId: crypto.randomBytes(4).toString("hex").toUpperCase(),
@@ -143,7 +124,10 @@ export async function POST(req) {
       items,
       subtotal,
       serviceTotal,
-      total: subtotal + serviceTotal,
+      discount,
+      couponCode: coupon ? coupon.code : "",
+      deliveryFee,
+      total,
       currency: "USD",
       deliveryLocation: location || user.location || {},
       paymentMethod: razorpayVerified
@@ -201,8 +185,13 @@ export async function POST(req) {
       link: "/orders",
     });
 
+    if (coupon) {
+      coupon.usedCount += 1;
+      await coupon.save();
+    }
+
     return NextResponse.json(order, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
   }
 }

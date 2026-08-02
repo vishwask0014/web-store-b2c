@@ -80,7 +80,8 @@ export default function PhoneLogin() {
       const cred = await confirmationResult.confirm(code.trim());
       const idToken = await cred.user.getIdToken();
       await useAuthStore.getState().login(idToken, name.trim() || undefined);
-      router.replace(redirect);
+      const role = useAuthStore.getState().user?.role;
+      router.replace(role === "customer" ? "/shop" : redirect);
     } catch (err) {
       setError(friendlyError(err.code, err.message));
     } finally {

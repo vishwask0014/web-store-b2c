@@ -1,10 +1,10 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Cart from "@/app/models/Cart";
-import Product from "@/app/models/Product";
 import User from "@/app/models/User";
 import { NextResponse } from "next/server";
 import { getRequestUser, unauthorized } from "@/app/lib/auth";
 import { getRazorpay, isRazorpayConfigured, CURRENCY } from "@/app/lib/razorpay";
+import { computeCartTotals, findCoupon, couponError, computeCouponDiscount } from "@/app/lib/checkout";
 
 export async function POST(req) {
   try {
@@ -20,7 +20,7 @@ export async function POST(req) {
 
     await connectDB();
     const body = await req.json();
-    const { userId } = body;
+    const { userId, couponCode } = body;
 
     if (!userId || userId !== session.uid) {
       return NextResponse.json({ error: "Invalid user." }, { status: 403 });
@@ -32,22 +32,17 @@ export async function POST(req) {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
     }
 
-    let total = 0;
-    for (const item of cart.items) {
-      const product = await Product.findOne({ uniqueProductId: item.productId });
-      if (!product || product.isActive === false) {
-        return NextResponse.json(
-          { error: `Product "${item.name}" is no longer available.` },
-          { status: 400 }
-        );
-      }
-      const qty = Math.min(item.quantity, product.quantity);
-      if (qty <= 0) {
-        return NextResponse.json({ error: `Product "${item.name}" is out of stock.` }, { status: 400 });
-      }
-      total += product.price * qty + (item.serviceCharge || 0) * qty;
+    const { subtotal, serviceTotal, deliveryFee } = await computeCartTotals(cart.items);
+
+    let discount = 0;
+    if (couponCode) {
+      const coupon = await findCoupon(couponCode);
+      const invalid = couponError(coupon, subtotal);
+      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+      discount = computeCouponDiscount(coupon, subtotal);
     }
 
+    const total = Math.max(0, subtotal + serviceTotal - discount + deliveryFee);
     const amountMinor = Math.round(total * 100);
     const receipt = `order_${Date.now()}`;
     const rzp = getRazorpay();
