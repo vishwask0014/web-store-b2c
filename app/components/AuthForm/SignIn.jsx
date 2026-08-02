@@ -8,6 +8,7 @@ import { Label } from "react-aria-components";
 import { motion } from "framer-motion";
 import useAuthStore from "@/app/stores/authStore";
 import { headingClass, subheadingClass, labelClass, inputClass, buttonClass, errorClass } from "./authStyles";
+import { friendlyAuthError } from "./firebaseErrors";
 
 export default function SignIn() {
     const router = useRouter();
@@ -36,7 +37,7 @@ export default function SignIn() {
             const role = useAuthStore.getState().user?.role;
             router.replace(role === "customer" ? "/shop" : redirect);
         } catch (err) {
-            setError(err.message);
+            setError(friendlyAuthError(err));
         } finally {
             setLoading(false);
         }

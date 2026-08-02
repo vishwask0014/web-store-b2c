@@ -6,6 +6,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { useId, useState } from "react";
 import { Label } from "react-aria-components";
 import { inputClass, labelClass, errorClass, successClass } from "./authStyles";
+import { friendlyAuthError } from "./firebaseErrors";
 
 export default function ForgotPassword() {
     const id = useId();
@@ -32,7 +33,7 @@ export default function ForgotPassword() {
                 setSent(false);
             }, 2500);
         } catch (err) {
-            setError(err.message);
+            setError(friendlyAuthError(err));
         } finally {
             setLoading(false);
         }
