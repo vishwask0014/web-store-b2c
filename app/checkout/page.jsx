@@ -17,8 +17,11 @@ import {
   Zap,
   Loader2,
   FlaskConical,
+  LocateFixed,
+  Save,
 } from "lucide-react";
 import { errorClass, successClass, inputClass, labelClass } from "@/app/components/AuthForm/authStyles";
+import { deliveryEtaMinutes, formatEta } from "@/app/lib/geo";
 
 const TEST_MODE = (process.env.NEXT_PUBLIC_PAYMENT_MODE || "test") !== "live";
 
@@ -60,6 +63,8 @@ export default function CheckoutPage() {
     }
   });
   const [storeMap, setStoreMap] = useState({});
+  const [locSaving, setLocSaving] = useState(false);
+  const [locMsg, setLocMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/stores")
@@ -67,10 +72,7 @@ export default function CheckoutPage() {
       .then((list) => {
         const map = {};
         for (const s of list) {
-          map[s.uniqueStoreId] = {
-            deliveryFee: s.deliveryFee || 0,
-            freeDeliveryAbove: s.freeDeliveryAbove || 0,
-          };
+          map[s.uniqueStoreId] = s;
         }
         setStoreMap(map);
       })
@@ -111,6 +113,54 @@ export default function CheckoutPage() {
   })();
   const discount = appliedCoupon?.discount || 0;
   const total = Math.max(0, subtotal + serviceTotal - discount + deliveryFee);
+
+  const hasUserLoc = Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng));
+  const itemStoreIds = [...new Set(items.map((i) => i.storeId).filter(Boolean))];
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      window.alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation((prev) => ({
+          ...prev,
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6)),
+        }));
+        setLocMsg("Location captured — remember to save it.");
+      },
+      () =>
+        window.alert("Could not fetch your location. Enable location access or enter coordinates manually."),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const saveLocation = async () => {
+    setLocSaving(true);
+    setLocMsg("");
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not save location.");
+      setLocMsg("Location saved to your profile.");
+    } catch (err) {
+      setLocMsg(err.message);
+    } finally {
+      setLocSaving(false);
+    }
+  };
+
+  const storeEta = (storeId) => {
+    const store = storeMap[storeId];
+    if (!store) return null;
+    return hasUserLoc ? deliveryEtaMinutes(store, location) : store.etaMinutes || null;
+  };
 
   const placeOrderManual = async () => {
     setError("");
@@ -363,6 +413,46 @@ export default function CheckoutPage() {
                     className={inputClass}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="Latitude"
+                    value={location.lat ?? ""}
+                    onChange={(e) => setLocation((prev) => ({ ...prev, lat: e.target.value }))}
+                    className={inputClass}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="Longitude"
+                    value={location.lng ?? ""}
+                    onChange={(e) => setLocation((prev) => ({ ...prev, lng: e.target.value }))}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={detectLocation}
+                    className="flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/5 px-4 py-2 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-500/10"
+                  >
+                    <LocateFixed className="h-3.5 w-3.5" /> Use my current location
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveLocation}
+                    disabled={locSaving}
+                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200 disabled:opacity-50"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    {locSaving ? "Saving..." : "Save to profile"}
+                  </button>
+                </div>
+                {locMsg && <p className={locMsg.startsWith("Could") || locMsg.includes("error") ? "text-xs text-red-400" : "text-xs text-emerald-400"}>{locMsg}</p>}
+                <p className="text-[11px] text-zinc-600">
+                  Your location lets stores estimate delivery time. It is only used for ETA calculation.
+                </p>
               </div>
             </div>
 
@@ -502,6 +592,29 @@ export default function CheckoutPage() {
               })}
             </div>
             <div className="grid gap-1.5 border-t border-white/5 pt-4 text-sm">
+              {itemStoreIds.length > 0 && (
+                <div className="mb-2 grid gap-1.5 rounded-xl bg-white/[0.03] p-3 text-xs">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                    Estimated delivery
+                  </p>
+                  {itemStoreIds.map((storeId) => {
+                    const store = storeMap[storeId];
+                    const eta = storeEta(storeId);
+                    if (!store || !eta) return null;
+                    return (
+                      <p key={storeId} className="flex items-center justify-between gap-2 text-zinc-400">
+                        <span className="truncate">{store.name}</span>
+                        <span className="shrink-0 font-medium text-zinc-300">~{formatEta(eta)}</span>
+                      </p>
+                    );
+                  })}
+                  <p className="text-[11px] text-zinc-600">
+                    {hasUserLoc
+                      ? "Estimated from your location to each store."
+                      : "Add your location above for a more accurate ETA."}
+                  </p>
+                </div>
+              )}
               <div className="flex justify-between text-zinc-400">
                 <span>Subtotal</span>
                 <span>${subtotal.toFixed(2)}</span>

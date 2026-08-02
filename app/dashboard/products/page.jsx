@@ -6,7 +6,28 @@ import { Input } from "@/components/tailgrids/core/input";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { compressImage, uploadFile } from "@/app/lib/upload";
 import Link from "next/link";
-import { Package, Plus, Wrench, AlertTriangle, X, Loader2 } from "lucide-react";
+import {
+  Package,
+  Plus,
+  Wrench,
+  AlertTriangle,
+  X,
+  Loader2,
+  Store as StoreIcon,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  PlusCircle,
+  MinusCircle,
+  Timer,
+  ShoppingBag,
+  DollarSign,
+  Hourglass,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Percent,
+} from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label, Switch } from "react-aria-components";
 
@@ -33,12 +54,16 @@ export default function ProductsPage() {
   const [pendingFiles, setPendingFiles] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openAccordion, setOpenAccordion] = useState("");
 
   useEffect(() => {
     if (!user?.uid) return;
     fetch(`/api/stores?ownerId=${user.uid}`)
       .then((r) => r.json())
-      .then(setStores);
+      .then((list) => {
+        setStores(list);
+        setSelectedStore((prev) => prev || list[0]?.uniqueStoreId || "");
+      });
   }, [user]);
 
   useEffect(() => {
@@ -149,18 +174,23 @@ export default function ProductsPage() {
         ) : (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value)}
-                className="w-full sm:w-auto rounded-xl border border-border-default bg-bg-surface px-3 py-2.5 text-sm text-text-primary outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500"
-              >
-                <option value="">Select a store</option>
+              <div className="flex flex-wrap items-center gap-2">
                 {enabledStores.map((s) => (
-                  <option key={s.uniqueStoreId} value={s.uniqueStoreId}>
+                  <button
+                    key={s.uniqueStoreId}
+                    type="button"
+                    onClick={() => setSelectedStore(s.uniqueStoreId)}
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedStore === s.uniqueStoreId
+                        ? "border-primary-500/60 bg-primary-500/15 text-primary-400"
+                        : "border-border-default text-text-secondary hover:border-primary-500/40 hover:text-text-primary"
+                    }`}
+                  >
+                    <StoreIcon className="w-4 h-4" />
                     {s.name}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
               {selectedStore && !isStoreDisabled && (
                 <Button size="sm" className="gap-2 w-fit" onPress={() => setShowForm(!showForm)}>
                   <Plus className="w-4 h-4" />
@@ -333,54 +363,194 @@ export default function ProductsPage() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {products.map((p) => (
-                  <div key={p._id} className="rounded-2xl border border-border-default bg-bg-surface p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-primary-500/15 flex items-center justify-center text-primary-400">
-                        <Package className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-text-primary">{p.name}</p>
-                          {p.isServiceAvailable && (
-                            <span className="flex items-center gap-1 text-xs text-success bg-success/10 px-2 py-0.5 rounded-full">
-                              <Wrench className="w-3 h-3" /> Service
-                            </span>
+                {products.map((p) => {
+                  const rackDays = Math.max(0, Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 86400000));
+                  const lastOrderDays =
+                    p.lastOrderAt ? Math.max(0, Math.floor((Date.now() - new Date(p.lastOrderAt).getTime()) / 86400000)) : null;
+                  const views = p.views || 0;
+                  const orders = p.orderCount || 0;
+                  const conversion = views > 0 ? ((orders / views) * 100).toFixed(1) : "0.0";
+                  const avgDwell = p.cartDwellCount > 0 ? Math.max(1, Math.round(p.cartDwellMinutes / p.cartDwellCount)) : 0;
+                  const perf = orders > 0 ? (lastOrderDays !== null && lastOrderDays <= 7 ? "selling_well" : "slow_mover") : "no_sales";
+                  const lowStock = (p.quantity || 0) <= 5;
+                  const isOpen = openAccordion === p._id;
+                  return (
+                    <div key={p._id} className="rounded-2xl border border-border-default bg-bg-surface overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setOpenAccordion(isOpen ? "" : p._id)}
+                        className="w-full flex items-center gap-4 p-4 sm:p-5 text-left hover:bg-bg-muted/50 transition-colors"
+                      >
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-bg-muted flex items-center justify-center">
+                          {p.images?.[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="w-5 h-5 text-primary-400" />
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted flex-wrap">
-                          <span>${p.price}</span>
-                          <span className="text-text-placeholder">|</span>
-                          <span>Qty: {p.quantity}</span>
-                          <span className="text-text-placeholder">|</span>
-                          <span className="text-text-placeholder">ID: {p.uniqueProductId}</span>
-                          {(p.services?.length || 0) > 0 && (
-                            <>
-                              <span className="text-text-placeholder">|</span>
-                              <span className="text-primary-400">{p.services.length} service{p.services.length > 1 ? "s" : ""}</span>
-                            </>
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-text-primary truncate">{p.name}</p>
+                            {p.isServiceAvailable && (
+                              <span className="flex items-center gap-1 text-xs text-success bg-success/10 px-2 py-0.5 rounded-full">
+                                <Wrench className="w-3 h-3" /> Service
+                              </span>
+                            )}
+                            {lowStock && (
+                              <span className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                <AlertTriangle className="w-3 h-3" /> Low stock
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted flex-wrap">
+                            <span>${p.price}</span>
+                            <span className="text-text-placeholder">|</span>
+                            <span>Qty: {p.quantity}</span>
+                            <span className="text-text-placeholder">|</span>
+                            <span>ID: {p.uniqueProductId}</span>
+                            {(p.services?.length || 0) > 0 && (
+                              <>
+                                <span className="text-text-placeholder">|</span>
+                                <span className="text-primary-400">{p.services.length} service{p.services.length > 1 ? "s" : ""}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                        {isOpen ? (
+                          <ChevronUp className="w-5 h-5 text-text-muted shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-text-muted shrink-0" />
+                        )}
+                      </button>
+
+                      {isOpen && (
+                        <div className="border-t border-border-default p-4 sm:p-5 space-y-5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {(p.images?.length > 0 ? p.images : [null]).map((img, i) => (
+                                <div
+                                  key={i}
+                                  className="w-14 h-14 rounded-xl overflow-hidden bg-bg-muted flex items-center justify-center border border-border-default"
+                                >
+                                  {img ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={img} alt={`${p.name} ${i + 1}`} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Package className="w-4 h-4 text-text-placeholder" />
+                                  )}
+                                </div>
+                              ))}
+                              <span className="text-xs text-text-muted ml-1">{p.images?.length || 0} image{p.images?.length === 1 ? "" : "s"}</span>
+                            </div>
+                            <Link
+                              href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
+                              className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
+                            >
+                              {p.isServiceAvailable ? "Manage Services" : "Details"} &rarr;
+                            </Link>
+                          </div>
+
+                          <div
+                            className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${
+                              perf === "selling_well"
+                                ? "bg-success/10 text-success"
+                                : perf === "slow_mover"
+                                  ? "bg-amber-500/10 text-amber-500"
+                                  : "bg-bg-muted text-text-muted"
+                            }`}
+                          >
+                            {perf === "selling_well" ? (
+                              <TrendingUp className="w-4 h-4" />
+                            ) : perf === "slow_mover" ? (
+                              <TrendingDown className="w-4 h-4" />
+                            ) : (
+                              <Hourglass className="w-4 h-4" />
+                            )}
+                            {perf === "selling_well"
+                              ? "Selling well — last order " + (lastOrderDays === 0 ? "today" : `${lastOrderDays} day${lastOrderDays > 1 ? "s" : ""} ago`)
+                              : perf === "slow_mover"
+                                ? `Slow mover — last order ${lastOrderDays} day${lastOrderDays > 1 ? "s" : ""} ago`
+                                : "No sales yet — on the rack for " + (rackDays < 1 ? "under a day" : `${rackDays} day${rackDays > 1 ? "s" : ""}`)}
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Eye className="w-3.5 h-3.5" /> Views
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{views}</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <PlusCircle className="w-3.5 h-3.5" /> Cart adds
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{p.cartAdds || 0}</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <MinusCircle className="w-3.5 h-3.5" /> Cart removes
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{p.cartRemoves || 0}</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Timer className="w-3.5 h-3.5" /> Avg dwell
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">
+                                {avgDwell ? `${avgDwell}m` : "—"}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <ShoppingBag className="w-3.5 h-3.5" /> Units sold
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{p.unitsSold || 0}</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Package className="w-3.5 h-3.5" /> Orders
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{orders}</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <DollarSign className="w-3.5 h-3.5" /> Revenue
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">
+                                {p.revenue ? `$${Number(p.revenue).toFixed(2)}` : "—"}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Percent className="w-3.5 h-3.5" /> Conv. rate
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">{conversion}%</p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Hourglass className="w-3.5 h-3.5" /> On rack
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">
+                                {rackDays < 1 ? "<1d" : `${rackDays}d`}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-bg-muted/60 p-3">
+                              <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                                <Calendar className="w-3.5 h-3.5" /> Last order
+                              </div>
+                              <p className="text-lg font-semibold text-text-primary mt-1">
+                                {lastOrderDays !== null
+                                  ? new Date(p.lastOrderAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+                                  : "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {p.isServiceAvailable && (
-                      <Link
-                        href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
-                        className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
-                      >
-                        Manage Services &rarr;
-                      </Link>
-                    )}
-                    {!p.isServiceAvailable && (
-                      <Link
-                        href={`/dashboard/products/${p.uniqueProductId}?storeId=${selectedStore}`}
-                        className="text-sm text-primary-400 hover:text-primary-500 font-medium shrink-0"
-                      >
-                        Details &rarr;
-                      </Link>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

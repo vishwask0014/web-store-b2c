@@ -3,7 +3,10 @@ import Product from "@/app/models/Product";
 import Store from "@/app/models/Store";
 import Service from "@/app/models/Service";
 import Review from "@/app/models/Review";
+import User from "@/app/models/User";
 import { NextResponse } from "next/server";
+import { getRequestUser } from "@/app/lib/auth";
+import { deliveryEtaMinutes } from "@/app/lib/geo";
 
 export async function GET(req, { params }) {
   try {
@@ -19,6 +22,13 @@ export async function GET(req, { params }) {
 
     const store = await Store.findOne({ uniqueStoreId: product.storeId });
 
+    const session = await getRequestUser(req);
+    let userLoc = null;
+    if (session) {
+      const viewer = await User.findOne({ uid: session.uid }).lean();
+      userLoc = viewer?.location || null;
+    }
+
     const relatedRaw = await Product.find({
       category: product.category || "__none__",
       uniqueProductId: { $ne: product.uniqueProductId },
@@ -32,7 +42,7 @@ export async function GET(req, { params }) {
     const related = relatedRaw.map((r) => ({
       ...r.toObject(),
       storeName: relatedStoreMap.get(r.storeId)?.name || "",
-      deliveryMinutes: relatedStoreMap.get(r.storeId)?.deliveryMinutes || 20,
+      deliveryEtaMinutes: deliveryEtaMinutes(relatedStoreMap.get(r.storeId), userLoc),
       deliveryFee: relatedStoreMap.get(r.storeId)?.deliveryFee || 0,
       freeDeliveryAbove: relatedStoreMap.get(r.storeId)?.freeDeliveryAbove || 0,
     }));
@@ -57,7 +67,7 @@ export async function GET(req, { params }) {
         services,
         storeName: store?.name || "",
         storeCategory: store?.category || "",
-        deliveryMinutes: store?.deliveryMinutes || 20,
+        deliveryEtaMinutes: deliveryEtaMinutes(store, userLoc),
         deliveryFee: store?.deliveryFee || 0,
         freeDeliveryAbove: store?.freeDeliveryAbove || 0,
       },
@@ -65,6 +75,27 @@ export async function GET(req, { params }) {
       related,
       reviews,
     });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function POST(req, { params }) {
+  try {
+    await connectDB();
+    const { productId } = await params;
+    const body = await req.json().catch(() => ({}));
+    if (!productId) return NextResponse.json({ error: "Product id is required." }, { status: 400 });
+
+    if (body.action === "view") {
+      await Product.updateOne(
+        { uniqueProductId: productId.toUpperCase() },
+        { $inc: { views: 1 } }
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: "Unknown action." }, { status: 400 });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

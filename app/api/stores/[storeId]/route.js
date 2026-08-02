@@ -1,6 +1,9 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Store from "@/app/models/Store";
+import User from "@/app/models/User";
 import { NextResponse } from "next/server";
+import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
+import { deliveryEtaMinutes } from "@/app/lib/geo";
 
 export async function GET(req, { params }) {
   try {
@@ -8,7 +11,18 @@ export async function GET(req, { params }) {
     const { storeId } = await params;
     const store = await Store.findOne({ uniqueStoreId: storeId });
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
-    return NextResponse.json(store);
+
+    const session = await getRequestUser(req);
+    let userLoc = null;
+    if (session) {
+      const viewer = await User.findOne({ uid: session.uid }).lean();
+      userLoc = viewer?.location || null;
+    }
+
+    return NextResponse.json({
+      ...store.toObject(),
+      etaMinutes: deliveryEtaMinutes(store, userLoc),
+    });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -16,11 +30,18 @@ export async function GET(req, { params }) {
 
 export async function PUT(req, { params }) {
   try {
+    const session = await getRequestUser(req);
+    if (!session) return unauthorized();
+
     await connectDB();
     const { storeId } = await params;
     const body = await req.json();
     const existing = await Store.findOne({ uniqueStoreId: storeId });
     if (!existing) return NextResponse.json({ error: "Store not found" }, { status: 404 });
+
+    if (session.role !== "admin" && String(existing.ownerId) !== session.uid) {
+      return forbidden("You can only edit your own stores.");
+    }
 
     if (existing.disabled && body.disabled === false) {
       return NextResponse.json(

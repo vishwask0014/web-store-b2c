@@ -303,7 +303,7 @@ export default function ProductDetailPage() {
             <div className="flex flex-col gap-2 rounded-2xl border border-border-default bg-bg-surface p-4 text-xs text-text-secondary">
               <p className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-primary-400" />
-                {product.deliveryMinutes ? `Delivered in ~${product.deliveryMinutes} min` : "Fast delivery"}
+                {product.deliveryEtaMinutes ? `Delivered in ~${product.deliveryEtaMinutes} min` : "Fast delivery"}
                 {product.deliveryFee > 0 ? ` · Delivery $${product.deliveryFee.toFixed(2)}` : " · Free delivery"}
                 {product.freeDeliveryAbove > 0 && ` above $${product.freeDeliveryAbove.toFixed(2)}`}
               </p>

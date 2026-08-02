@@ -1,8 +1,11 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Store from "@/app/models/Store";
+import User from "@/app/models/User";
 import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { getRequestUser } from "@/app/lib/auth";
+import { deliveryEtaMinutes } from "@/app/lib/geo";
 
 function generateId() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -15,7 +18,19 @@ export async function GET(req) {
     const ownerId = searchParams.get("ownerId");
     const filter = ownerId ? { ownerId } : {};
     const stores = await Store.find(filter).sort({ createdAt: -1 });
-    return NextResponse.json(stores);
+
+    const session = await getRequestUser(req);
+    let userLoc = null;
+    if (session) {
+      const viewer = await User.findOne({ uid: session.uid }).lean();
+      userLoc = viewer?.location || null;
+    }
+
+    const enriched = stores.map((s) => ({
+      ...s.toObject(),
+      etaMinutes: deliveryEtaMinutes(s, userLoc),
+    }));
+    return NextResponse.json(enriched);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

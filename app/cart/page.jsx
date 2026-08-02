@@ -43,7 +43,7 @@ export default function CartPage() {
           map[s.uniqueStoreId] = {
             deliveryFee: s.deliveryFee || 0,
             freeDeliveryAbove: s.freeDeliveryAbove || 0,
-            deliveryMinutes: s.deliveryMinutes || 0,
+            etaMinutes: s.etaMinutes || 0,
           };
         }
         setStoreMap(map);
@@ -71,7 +71,7 @@ export default function CartPage() {
       if (!s) continue;
       if (s.deliveryFee > 0 && storeSubtotal < s.freeDeliveryAbove) fee += s.deliveryFee;
       freeAbove = Math.max(freeAbove, s.freeDeliveryAbove);
-      minutes = Math.max(minutes, s.deliveryMinutes);
+      minutes = Math.max(minutes, s.etaMinutes);
     }
     return { fee, freeAbove, minutes };
   }, [items, storeMap]);

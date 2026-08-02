@@ -21,6 +21,11 @@ import {
   Save,
   ImagePlus,
   Loader2,
+  Pencil,
+  MapPin,
+  LocateFixed,
+  X,
+  Clock,
 } from "lucide-react";
 import { useId, useState, useEffect } from "react";
 import { Label } from "react-aria-components";
@@ -51,11 +56,23 @@ export default function StorePage() {
 
   const [servicesByStore, setServicesByStore] = useState({});
   const [openServices, setOpenServices] = useState({});
-  const [svcForm, setSvcForm] = useState({});
   const [svcError, setSvcError] = useState("");
-  const [svcLoading, setSvcLoading] = useState(false);
-  const [svcPhotoFiles, setSvcPhotoFiles] = useState({});
-  const [svcPhotoPreviews, setSvcPhotoPreviews] = useState({});
+  const [svcSaving, setSvcSaving] = useState(false);
+  const [svcModal, setSvcModal] = useState(null);
+  const [svcModalForm, setSvcModalForm] = useState({
+    name: "",
+    charges: "",
+    chargeType: "fixed",
+    durationMinutes: 60,
+    description: "",
+  });
+  const [svcPhotoFile, setSvcPhotoFile] = useState(null);
+  const [svcPhotoPreview, setSvcPhotoPreview] = useState("");
+
+  const [storeEdit, setStoreEdit] = useState(null);
+  const [storeForm, setStoreForm] = useState({});
+  const [storeSaving, setStoreSaving] = useState(false);
+  const [storeMsg, setStoreMsg] = useState("");
 
   const [openDelivery, setOpenDelivery] = useState({});
   const [deliveryForm, setDeliveryForm] = useState({});
@@ -114,42 +131,98 @@ export default function StorePage() {
 
   const enabledStores = stores.filter((s) => !s.disabled);
 
-  const handleAddService = async (storeId) => {
+  const openSvcModal = (storeId, svc = null) => {
     setSvcError("");
-    const form = svcForm[storeId] || {};
-    if (!form.name?.trim() || !form.charges) {
+    setSvcPhotoFile(null);
+    setSvcPhotoPreview("");
+    setSvcModalForm(
+      svc
+        ? {
+            name: svc.name || "",
+            charges: svc.charges ?? "",
+            chargeType: svc.chargeType || "fixed",
+            durationMinutes: svc.durationMinutes ?? 60,
+            description: svc.description || "",
+          }
+        : { name: "", charges: "", chargeType: "fixed", durationMinutes: 60, description: "" }
+    );
+    setSvcModal({ storeId, editing: svc });
+  };
+
+  const closeSvcModal = () => {
+    setSvcModal(null);
+    setSvcError("");
+    setSvcPhotoFile(null);
+    setSvcPhotoPreview("");
+  };
+
+  const onSvcPhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSvcError("");
+    if (!file.type.startsWith("image/")) {
+      setSvcError("Please choose an image file.");
+      return;
+    }
+    if (svcPhotoPreview) URL.revokeObjectURL(svcPhotoPreview);
+    setSvcPhotoFile(file);
+    setSvcPhotoPreview(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const saveService = async () => {
+    if (!svcModal) return;
+    setSvcError("");
+    if (!svcModalForm.name?.trim() || !svcModalForm.charges) {
       setSvcError("Service name and charges are required.");
       return;
     }
-    setSvcLoading(true);
+    setSvcSaving(true);
+    const { storeId, editing } = svcModal;
     try {
-      let image = form.image || "";
-      const photoFile = svcPhotoFiles[storeId];
-      if (photoFile) {
-        const dataUrl = await compressImage(photoFile);
+      let image = editing?.image || "";
+      if (svcPhotoFile) {
+        const dataUrl = await compressImage(svcPhotoFile);
         image = await uploadFile(dataUrl, "services");
       }
-      const res = await fetch(`/api/stores/${storeId}/services`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          charges: Number(form.charges),
-          description: form.description || "",
-          image,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      if (svcPhotoPreviews[storeId]) URL.revokeObjectURL(svcPhotoPreviews[storeId]);
-      setSvcForm((prev) => ({ ...prev, [storeId]: {} }));
-      setSvcPhotoFiles((prev) => ({ ...prev, [storeId]: null }));
-      setSvcPhotoPreviews((prev) => ({ ...prev, [storeId]: null }));
-      setServicesByStore((prev) => ({ ...prev, [storeId]: [data, ...(prev[storeId] || [])] }));
+      const body = {
+        name: svcModalForm.name.trim(),
+        charges: Number(svcModalForm.charges),
+        chargeType: svcModalForm.chargeType || "fixed",
+        durationMinutes: Number(svcModalForm.durationMinutes) || 60,
+        description: svcModalForm.description || "",
+        image,
+      };
+      let saved;
+      if (editing) {
+        const res = await fetch(`/api/services/${editing._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        saved = data;
+        setServicesByStore((prev) => ({
+          ...prev,
+          [storeId]: (prev[storeId] || []).map((s) => (s._id === editing._id ? saved : s)),
+        }));
+      } else {
+        const res = await fetch(`/api/stores/${storeId}/services`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        saved = data;
+        setServicesByStore((prev) => ({ ...prev, [storeId]: [saved, ...(prev[storeId] || [])] }));
+      }
+      closeSvcModal();
     } catch (err) {
       setSvcError(err.message);
     } finally {
-      setSvcLoading(false);
+      setSvcSaving(false);
     }
   };
 
@@ -163,18 +236,85 @@ export default function StorePage() {
     }
   };
 
-  const handleSvcImage = (storeId, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSvcError("");
-    if (!file.type.startsWith("image/")) {
-      setSvcError("Please choose an image file.");
+  const openStoreEdit = (store) => {
+    setStoreMsg("");
+    setStoreForm({
+      name: store.name || "",
+      phoneNumber: store.phoneNumber || "",
+      email: store.email || "",
+      category: store.category || "",
+      description: store.description || "",
+      street: store.address?.street || "",
+      city: store.address?.city || "",
+      state: store.address?.state || "",
+      zipCode: store.address?.zipCode || "",
+      country: store.address?.country || "",
+      lat: store.location?.lat || "",
+      lng: store.location?.lng || "",
+    });
+    setStoreEdit(store);
+  };
+
+  const detectStoreLocation = () => {
+    if (!navigator.geolocation) {
+      setStoreMsg("Geolocation is not supported by this browser.");
       return;
     }
-    if (svcPhotoPreviews[storeId]) URL.revokeObjectURL(svcPhotoPreviews[storeId]);
-    setSvcPhotoFiles((prev) => ({ ...prev, [storeId]: file }));
-    setSvcPhotoPreviews((prev) => ({ ...prev, [storeId]: URL.createObjectURL(file) }));
-    e.target.value = "";
+    setStoreMsg("Locating your store...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setStoreForm((prev) => ({
+          ...prev,
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6)),
+        }));
+        setStoreMsg("Store location captured.");
+      },
+      () => setStoreMsg("Could not get location. Allow location access or enter coordinates manually."),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const saveStore = async () => {
+    if (!storeEdit) return;
+    setStoreMsg("");
+    if (!storeForm.name?.trim() || !storeForm.phoneNumber?.trim() || !storeForm.category?.trim()) {
+      setStoreMsg("Name, phone, and category are required.");
+      return;
+    }
+    setStoreSaving(true);
+    try {
+      const res = await fetch(`/api/stores/${storeEdit.uniqueStoreId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: storeForm.name.trim(),
+          phoneNumber: storeForm.phoneNumber.trim(),
+          email: storeForm.email || "",
+          category: storeForm.category.trim(),
+          description: storeForm.description || "",
+          address: {
+            street: storeForm.street || "",
+            city: storeForm.city || "",
+            state: storeForm.state || "",
+            zipCode: storeForm.zipCode || "",
+            country: storeForm.country || "",
+          },
+          location: {
+            lat: Number(storeForm.lat) || 0,
+            lng: Number(storeForm.lng) || 0,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setStores((prev) => prev.map((s) => (s.uniqueStoreId === storeEdit.uniqueStoreId ? data : s)));
+      setStoreEdit(null);
+    } catch (err) {
+      setStoreMsg(err.message);
+    } finally {
+      setStoreSaving(false);
+    }
   };
 
   const toggleDelivery = (store) => {
@@ -183,7 +323,6 @@ export default function StorePage() {
     setDeliveryForm((prev) => ({
       ...prev,
       [store.uniqueStoreId]: prev[store.uniqueStoreId] || {
-        deliveryMinutes: store.deliveryMinutes || 20,
         deliveryFee: store.deliveryFee || 0,
         freeDeliveryAbove: store.freeDeliveryAbove || 0,
       },
@@ -205,7 +344,6 @@ export default function StorePage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deliveryMinutes: Math.min(120, Math.max(5, Number(form.deliveryMinutes) || 20)),
           deliveryFee: Math.max(0, Number(form.deliveryFee) || 0),
           freeDeliveryAbove: Math.max(0, Number(form.freeDeliveryAbove) || 0),
         }),
@@ -408,6 +546,13 @@ export default function StorePage() {
                   {!s.disabled && (
                     <div className="flex flex-wrap items-center gap-2">
                       <button
+                        onClick={() => openStoreEdit(s)}
+                        className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
                         onClick={() => toggleDelivery(s)}
                         className="flex w-fit items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
                       >
@@ -445,23 +590,30 @@ export default function StorePage() {
                           <p className="text-sm font-medium text-zinc-200">Delivery &amp; quick commerce</p>
                           <p className="text-xs text-zinc-600">Shown to customers on product cards</p>
                         </div>
-                        <div className="grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div>
-                            <label className={labelClass}>Delivery time (min)</label>
-                            <input
-                              type="number"
-                              min="5"
-                              max="120"
-                              value={deliveryForm[s.uniqueStoreId]?.deliveryMinutes ?? s.deliveryMinutes ?? 20}
-                              onChange={(e) =>
-                                setDeliveryForm((prev) => ({
-                                  ...prev,
-                                  [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), deliveryMinutes: e.target.value },
-                                }))
-                              }
-                              className={`${inputClass} mt-1`}
-                            />
+                        <div className="rounded-2xl border border-white/5 bg-zinc-950 p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                            <div className="text-xs text-zinc-400 leading-relaxed">
+                              Delivery time is now calculated automatically from the distance between your
+                              store location and the customer's location.{" "}
+                              {s.location?.lat && s.location?.lng ? (
+                                <>
+                                  Your store is pinned at{" "}
+                                  <b className="text-zinc-200">
+                                    {s.location.lat}, {s.location.lng}
+                                  </b>{" "}
+                                  — customers near you get faster delivery estimates.
+                                </>
+                              ) : (
+                                <>
+                                  <b className="text-amber-400">Set your store location</b> in Edit to enable
+                                  accurate distance-based delivery estimates.
+                                </>
+                              )}
+                            </div>
                           </div>
+                        </div>
+                        <div className="grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
                             <label className={labelClass}>Delivery fee ($)</label>
                             <input
@@ -557,98 +709,40 @@ export default function StorePage() {
                                     <p className="text-sm font-medium text-zinc-200">{svc.name}</p>
                                     <p className="mt-0.5 text-xs text-zinc-500">
                                       ${svc.charges}
+                                      {svc.chargeType === "hourly" ? "/hr" : ""}
+                                      {svc.durationMinutes ? ` · ${svc.durationMinutes} min` : ""}
                                       {svc.description ? ` — ${svc.description}` : ""}
                                     </p>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => handleDeleteService(s.uniqueStoreId, svc._id)}
-                                  className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                                  title="Delete service"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => openSvcModal(s.uniqueStoreId, svc)}
+                                    className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-blue-500/10 hover:text-blue-400"
+                                    title="Edit service"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteService(s.uniqueStoreId, svc._id)}
+                                    className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                                    title="Delete service"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
                         )}
                         {(servicesByStore[s.uniqueStoreId] || []).length < MAX_SERVICES_PER_STORE && (
-                          <div className="grid gap-3 max-w-lg">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              <input
-                                placeholder="Service name"
-                                value={svcForm[s.uniqueStoreId]?.name || ""}
-                                onChange={(e) =>
-                                  setSvcForm((prev) => ({
-                                    ...prev,
-                                    [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), name: e.target.value },
-                                  }))
-                                }
-                                className={`${inputClass} sm:col-span-2`}
-                              />
-                              <input
-                                type="number"
-                                placeholder="Charges $"
-                                value={svcForm[s.uniqueStoreId]?.charges || ""}
-                                onChange={(e) =>
-                                  setSvcForm((prev) => ({
-                                    ...prev,
-                                    [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), charges: e.target.value },
-                                  }))
-                                }
-                                className={inputClass}
-                              />
-                            </div>
-                            <input
-                              placeholder="Description (optional)"
-                              value={svcForm[s.uniqueStoreId]?.description || ""}
-                              onChange={(e) =>
-                                setSvcForm((prev) => ({
-                                  ...prev,
-                                  [s.uniqueStoreId]: { ...(prev[s.uniqueStoreId] || {}), description: e.target.value },
-                                }))
-                              }
-                              className={inputClass}
-                            />
-                            <div className="flex items-center gap-3">
-                              {(svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image) && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image}
-                                  alt="Service"
-                                  className="h-12 w-12 rounded-xl object-cover"
-                                />
-                              )}
-                              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white">
-                                {svcLoading && svcPhotoFiles[s.uniqueStoreId] ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <ImagePlus className="h-4 w-4" />
-                                )}
-                                {svcLoading && svcPhotoFiles[s.uniqueStoreId]
-                                  ? "Uploading..."
-                                  : svcPhotoPreviews[s.uniqueStoreId] || svcForm[s.uniqueStoreId]?.image
-                                  ? "Change photo"
-                                  : "Add photo"}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => handleSvcImage(s.uniqueStoreId, e)}
-                                  disabled={svcLoading}
-                                />
-                              </label>
-                            </div>
-                            {svcError && <p className={errorClass}>{svcError}</p>}
-                            <button
-                              onClick={() => handleAddService(s.uniqueStoreId)}
-                              disabled={svcLoading}
-                              className="flex w-fit items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98] disabled:opacity-50"
-                            >
-                              {svcLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                              {svcLoading ? "Adding..." : "Add Service"}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => openSvcModal(s.uniqueStoreId)}
+                            className="flex w-fit items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98]"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Service
+                          </button>
                         )}
                         {(servicesByStore[s.uniqueStoreId] || []).length >= MAX_SERVICES_PER_STORE && (
                           <p className="mt-3 flex items-center gap-1 text-xs text-amber-400">
@@ -664,6 +758,344 @@ export default function StorePage() {
             ))}
           </div>
         )}
+
+        {/* Service add/edit modal */}
+        <AnimatePresence>
+          {svcModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              onClick={closeSvcModal}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-100">
+                      {svcModal.editing ? "Edit Service" : "Add Service"}
+                    </h3>
+                    <p className="text-xs text-zinc-500">
+                      {svcModal.editing ? "Update this service for your store" : "New service for your store"}
+                    </p>
+                  </div>
+                  <button onClick={closeSvcModal} className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid gap-4 p-6 max-h-[70vh] overflow-y-auto">
+                  <div className="grid gap-2">
+                    <Label htmlFor="svc-name" className={labelClass}>Service name</Label>
+                    <input
+                      id="svc-name"
+                      placeholder="Installation"
+                      value={svcModalForm.name}
+                      onChange={(e) => setSvcModalForm((p) => ({ ...p, name: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="svc-charges" className={labelClass}>Charges ($)</Label>
+                      <input
+                        id="svc-charges"
+                        type="number"
+                        min="0"
+                        placeholder="29.99"
+                        value={svcModalForm.charges}
+                        onChange={(e) => setSvcModalForm((p) => ({ ...p, charges: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="svc-duration" className={labelClass}>Duration (min)</Label>
+                      <input
+                        id="svc-duration"
+                        type="number"
+                        min="1"
+                        value={svcModalForm.durationMinutes}
+                        onChange={(e) => setSvcModalForm((p) => ({ ...p, durationMinutes: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className={labelClass}>Charge type</Label>
+                    <div className="flex gap-2">
+                      {["fixed", "hourly"].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSvcModalForm((p) => ({ ...p, chargeType: t }))}
+                          className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium capitalize transition-colors ${
+                            svcModalForm.chargeType === t
+                              ? "border-blue-500/50 bg-blue-500/15 text-blue-400"
+                              : "border-white/10 text-zinc-400 hover:border-white/20"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="svc-desc" className={labelClass}>Description (optional)</Label>
+                    <textarea
+                      id="svc-desc"
+                      rows={2}
+                      placeholder="What does this service include?"
+                      value={svcModalForm.description}
+                      onChange={(e) => setSvcModalForm((p) => ({ ...p, description: e.target.value }))}
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {svcPhotoPreview || svcModal.editing?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={svcPhotoPreview || svcModal.editing.image}
+                        alt="Service"
+                        className="h-12 w-12 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-white/10 text-zinc-600">
+                        <ImagePlus className="h-5 w-5" />
+                      </div>
+                    )}
+                    <label className="flex w-fit cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white">
+                      {svcSaving && svcPhotoFile ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      {svcSaving && svcPhotoFile
+                        ? "Uploading..."
+                        : svcPhotoPreview || svcModal.editing?.image
+                        ? "Change photo"
+                        : "Add photo"}
+                      <input type="file" accept="image/*" className="hidden" onChange={onSvcPhotoChange} disabled={svcSaving} />
+                    </label>
+                    {(svcPhotoPreview || svcModal.editing?.image) && (
+                      <button
+                        onClick={() => {
+                          if (svcPhotoPreview) URL.revokeObjectURL(svcPhotoPreview);
+                          setSvcPhotoFile(null);
+                          setSvcPhotoPreview("");
+                        }}
+                        className="text-xs text-zinc-500 transition-colors hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {svcError && <p className={errorClass}>{svcError}</p>}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={closeSvcModal}
+                      className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveService}
+                      disabled={svcSaving}
+                      className="flex items-center gap-2 rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {svcSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {svcSaving ? "Saving..." : svcModal.editing ? "Save changes" : "Add service"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Store edit modal */}
+        <AnimatePresence>
+          {storeEdit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              onClick={() => setStoreEdit(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-100">Edit Store</h3>
+                    <p className="text-xs text-zinc-500">Update store details and location</p>
+                  </div>
+                  <button onClick={() => setStoreEdit(null)} className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid gap-4 p-6 max-h-[70vh] overflow-y-auto">
+                  <div className="grid gap-2">
+                    <Label htmlFor="store-name" className={labelClass}>Store name</Label>
+                    <input
+                      id="store-name"
+                      value={storeForm.name || ""}
+                      onChange={(e) => setStoreForm((p) => ({ ...p, name: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="store-phone" className={labelClass}>Phone</Label>
+                      <input
+                        id="store-phone"
+                        value={storeForm.phoneNumber || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, phoneNumber: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="store-email" className={labelClass}>Email (optional)</Label>
+                      <input
+                        id="store-email"
+                        value={storeForm.email || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, email: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="store-category" className={labelClass}>Category</Label>
+                    <input
+                      id="store-category"
+                      placeholder="e.g. Electronics, Home Cleaning"
+                      value={storeForm.category || ""}
+                      onChange={(e) => setStoreForm((p) => ({ ...p, category: e.target.value }))}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="store-desc" className={labelClass}>Description (optional)</Label>
+                    <textarea
+                      id="store-desc"
+                      rows={2}
+                      value={storeForm.description || ""}
+                      onChange={(e) => setStoreForm((p) => ({ ...p, description: e.target.value }))}
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className={labelClass}>Store location (for distance-based delivery)</Label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={detectStoreLocation}
+                        className="flex w-fit items-center gap-2 rounded-full border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/20"
+                      >
+                        <LocateFixed className="h-4 w-4" />
+                        Detect my location
+                      </button>
+                      <span className="text-xs text-zinc-500">or enter coordinates below</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="Latitude"
+                          value={storeForm.lat || ""}
+                          onChange={(e) => setStoreForm((p) => ({ ...p, lat: e.target.value }))}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="Longitude"
+                          value={storeForm.lng || ""}
+                          onChange={(e) => setStoreForm((p) => ({ ...p, lng: e.target.value }))}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className={labelClass}>Address (optional)</Label>
+                    <input
+                      placeholder="Street"
+                      value={storeForm.street || ""}
+                      onChange={(e) => setStoreForm((p) => ({ ...p, street: e.target.value }))}
+                      className={inputClass}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        placeholder="City"
+                        value={storeForm.city || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, city: e.target.value }))}
+                        className={inputClass}
+                      />
+                      <input
+                        placeholder="State"
+                        value={storeForm.state || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, state: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        placeholder="ZIP code"
+                        value={storeForm.zipCode || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, zipCode: e.target.value }))}
+                        className={inputClass}
+                      />
+                      <input
+                        placeholder="Country"
+                        value={storeForm.country || ""}
+                        onChange={(e) => setStoreForm((p) => ({ ...p, country: e.target.value }))}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Customers will see delivery estimates based on the distance from this location.
+                  </div>
+                  {storeMsg && (
+                    <p className={`rounded-xl border px-3.5 py-2.5 text-sm ${storeMsg.includes("required") || storeMsg.includes("Could not") ? errorClass : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"}`}>
+                      {storeMsg}
+                    </p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => setStoreEdit(null)}
+                      className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveStore}
+                      disabled={storeSaving}
+                      className="flex items-center gap-2 rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-400 active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {storeSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {storeSaving ? "Saving..." : "Save store"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );

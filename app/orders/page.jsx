@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Ban,
   Truck,
+  CheckCircle2,
 } from "lucide-react";
 
 const STATUS_STYLES = {
@@ -30,6 +31,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState("");
+  const [confirming, setConfirming] = useState("");
 
   const load = () => {
     if (!user?.uid) return;
@@ -63,6 +65,25 @@ export default function OrdersPage() {
       window.alert(err.message);
     } finally {
       setCancelling("");
+    }
+  };
+
+  const confirmDelivery = async (order) => {
+    if (!window.confirm("Confirm that you received this order? This releases payment to the store.")) return;
+    setConfirming(order.orderId);
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "confirm_delivery" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Could not confirm delivery.");
+      load();
+    } catch (err) {
+      window.alert(err.message);
+    } finally {
+      setConfirming("");
     }
   };
 
@@ -231,6 +252,16 @@ export default function OrdersPage() {
                     >
                       <RotateCcw className="h-3.5 w-3.5" /> Buy again
                     </button>
+                    {o.status === "shipped" && (
+                      <button
+                        onClick={() => confirmDelivery(o)}
+                        disabled={confirming === o.orderId}
+                        className="flex items-center gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success transition hover:bg-success/20 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {confirming === o.orderId ? "Confirming…" : "Confirm received"}
+                      </button>
+                    )}
                     {cancellable(o) && (
                       <button
                         onClick={() => cancelOrder(o)}

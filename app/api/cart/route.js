@@ -86,6 +86,7 @@ export async function POST(req) {
     }
 
     await cart.save();
+    await Product.updateOne({ uniqueProductId: productId }, { $inc: { cartAdds: 1 } });
     return NextResponse.json(cart);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -146,8 +147,26 @@ export async function DELETE(req) {
     const cart = await Cart.findOne({ userId });
     if (!cart) return NextResponse.json({ items: [] });
 
+    const removed = cart.items.find(
+      (i) => i.productId === productId && i.serviceId === serviceId
+    );
+
     cart.items = cart.items.filter((i) => !(i.productId === productId && i.serviceId === serviceId));
     await cart.save();
+
+    if (removed) {
+      const dwellMs = Date.now() - new Date(removed.addedAt || Date.now()).getTime();
+      await Product.updateOne(
+        { uniqueProductId: productId },
+        {
+          $inc: {
+            cartRemoves: 1,
+            cartDwellMinutes: Math.max(0, Math.round(dwellMs / 60000)),
+            cartDwellCount: 1,
+          },
+        }
+      );
+    }
     return NextResponse.json(cart);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

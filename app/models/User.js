@@ -7,6 +7,8 @@ const LocationSchema = new Schema(
     state: { type: String, default: "" },
     zip: { type: String, default: "" },
     country: { type: String, default: "" },
+    lat: { type: Number, default: 0 },
+    lng: { type: Number, default: 0 },
   },
   { _id: false }
 );

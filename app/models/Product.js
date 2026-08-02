@@ -34,6 +34,15 @@ const ProductSchema = new Schema(
     isActive: { type: Boolean, default: true },
     ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
+    views: { type: Number, default: 0, min: 0 },
+    cartAdds: { type: Number, default: 0, min: 0 },
+    cartRemoves: { type: Number, default: 0, min: 0 },
+    cartDwellMinutes: { type: Number, default: 0, min: 0 },
+    cartDwellCount: { type: Number, default: 0, min: 0 },
+    unitsSold: { type: Number, default: 0, min: 0 },
+    orderCount: { type: Number, default: 0, min: 0 },
+    revenue: { type: Number, default: 0, min: 0 },
+    lastOrderAt: { type: String, default: "" },
   },
   { timestamps: true }
 );

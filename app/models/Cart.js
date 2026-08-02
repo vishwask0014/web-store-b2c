@@ -11,6 +11,7 @@ const CartItemSchema = new Schema(
     serviceId: { type: String, default: "" },
     serviceName: { type: String, default: "" },
     serviceCharge: { type: Number, default: 0, min: 0 },
+    addedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );

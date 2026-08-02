@@ -17,6 +17,10 @@ const StoreSchema = new Schema(
       zipCode: { type: String, default: "" },
       country: { type: String, default: "" },
     },
+    location: {
+      lat: { type: Number, default: 0 },
+      lng: { type: Number, default: 0 },
+    },
     ownerId: { type: String, required: true, index: true },
     serviceLimit: { type: Number, default: 10, min: 0 },
     deliveryMinutes: { type: Number, default: 20, min: 5, max: 120 },

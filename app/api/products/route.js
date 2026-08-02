@@ -2,8 +2,10 @@ import { connectDB } from "@/app/lib/mongodb";
 import Product from "@/app/models/Product";
 import Store from "@/app/models/Store";
 import Wishlist from "@/app/models/Wishlist";
+import User from "@/app/models/User";
 import { NextResponse } from "next/server";
 import { getRequestUser } from "@/app/lib/auth";
+import { deliveryEtaMinutes } from "@/app/lib/geo";
 
 export async function GET(req) {
   try {
@@ -40,8 +42,11 @@ export async function GET(req) {
     const storeMap = new Map(stores.map((s) => [s.uniqueStoreId, s]));
 
     const session = await getRequestUser(req);
+    let userLoc = null;
     let wishlistIds = new Set();
     if (session) {
+      const viewer = await User.findOne({ uid: session.uid }).lean();
+      userLoc = viewer?.location || null;
       const wl = await Wishlist.findOne({ userId: session.uid }).lean();
       wishlistIds = new Set((wl?.items || []).map((i) => i.productId));
     }
@@ -52,7 +57,7 @@ export async function GET(req) {
         ...p,
         storeName: store?.name || "",
         storeCategory: store?.category || "",
-        deliveryEtaMinutes: store?.deliveryMinutes || 0,
+        deliveryEtaMinutes: deliveryEtaMinutes(store, userLoc),
         deliveryFee: store?.deliveryFee || 0,
         wishlisted: wishlistIds.has(p.uniqueProductId),
       };

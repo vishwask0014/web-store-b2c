@@ -1,6 +1,7 @@
 import { connectDB } from "@/app/lib/mongodb";
 import Order from "@/app/models/Order";
 import Store from "@/app/models/Store";
+import Product from "@/app/models/Product";
 import { getSellerUser, sellerDenied } from "@/app/lib/roles";
 import { NextResponse } from "next/server";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
@@ -8,6 +9,23 @@ import { createNotification } from "@/app/lib/notify";
 import { processDeliveredPayouts } from "@/app/lib/razorpay";
 
 const VALID_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+
+async function revertProductStats(order) {
+  const byId = {};
+  for (const it of order.items) {
+    if (!byId[it.productId]) byId[it.productId] = { qty: 0, amount: 0 };
+    byId[it.productId].qty += it.quantity;
+    byId[it.productId].amount += it.quantity * it.price;
+  }
+  const docs = await Product.find({ uniqueProductId: { $in: Object.keys(byId) } });
+  for (const doc of docs) {
+    const s = byId[doc.uniqueProductId];
+    doc.unitsSold = Math.max(0, doc.unitsSold - s.qty);
+    doc.orderCount = Math.max(0, doc.orderCount - 1);
+    doc.revenue = Math.max(0, doc.revenue - s.amount);
+    await doc.save();
+  }
+}
 
 export async function GET(req, { params }) {
   try {
@@ -52,6 +70,7 @@ export async function PUT(req, { params }) {
           { status: 400 }
         );
       }
+      const wasCounted = order.status !== "cancelled";
       order.status = "cancelled";
       order.cancellation = {
         reason: String(body.reason || "No reason provided").trim(),
@@ -60,6 +79,7 @@ export async function PUT(req, { params }) {
         refundNote: order.paid ? "Refund initiated for the paid amount." : "No payment was captured.",
       };
       await order.save();
+      if (wasCounted) await revertProductStats(order);
 
       const stores = await Store.find({ uniqueStoreId: { $in: order.items.map((i) => i.storeId) } });
       const owners = [...new Set(stores.map((s) => s.ownerId))];
@@ -77,6 +97,54 @@ export async function PUT(req, { params }) {
         type: "order_status",
         title: "Order cancelled",
         message: `Order #${order.orderId} has been cancelled.${order.paid ? " Your refund has been initiated." : ""}`,
+        link: "/orders",
+      });
+      return NextResponse.json(order);
+    }
+
+    if (body.action === "confirm_delivery") {
+      if (session.uid !== String(order.userId) && session.role !== "admin") return forbidden();
+      if (order.status !== "shipped") {
+        return NextResponse.json(
+          { error: "This order can only be confirmed as received once it has been shipped." },
+          { status: 400 }
+        );
+      }
+      order.status = "delivered";
+      if (!order.deliveredAt) order.deliveredAt = new Date().toISOString();
+      for (const item of order.items) {
+        if (!item.deliveredAt) item.deliveredAt = new Date().toISOString();
+      }
+      if (order.settlements?.length) {
+        const results = await processDeliveredPayouts(order);
+        const byOwner = new Map(results.map((r) => [r.ownerId, r]));
+        for (const settlement of order.settlements) {
+          const result = byOwner.get(settlement.ownerId);
+          if (!result) continue;
+          settlement.status = result.status;
+          settlement.payoutId = result.payoutId || settlement.payoutId;
+          settlement.note = result.note || settlement.note;
+          if (result.status === "initiated") settlement.paidAt = new Date().toISOString();
+        }
+      }
+      await order.save();
+
+      const stores = await Store.find({ uniqueStoreId: { $in: order.items.map((i) => i.storeId) } });
+      const owners = [...new Set(stores.map((s) => s.ownerId))];
+      for (const ownerId of owners) {
+        await createNotification({
+          userId: ownerId,
+          type: "order_status",
+          title: "Order delivered",
+          message: `Order #${order.orderId} was confirmed as delivered by the customer.`,
+          link: "/dashboard/orders",
+        });
+      }
+      await createNotification({
+        userId: String(order.userId),
+        type: "order_status",
+        title: "Delivered",
+        message: `Thanks! Order #${order.orderId} is marked as delivered.`,
         link: "/orders",
       });
       return NextResponse.json(order);

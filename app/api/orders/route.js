@@ -3,6 +3,7 @@ import Order from "@/app/models/Order";
 import Cart from "@/app/models/Cart";
 import Store from "@/app/models/Store";
 import User from "@/app/models/User";
+import Product from "@/app/models/Product";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getRequestUser, unauthorized, forbidden } from "@/app/lib/auth";
@@ -150,8 +151,35 @@ export async function POST(req) {
       razorpayOrderId: razorpayOrderId || "",
       razorpayPaymentId: razorpayPaymentId || "",
       autoPaid: Boolean(autoPay),
-      status: "pending",
+      status: razorpayVerified ? "confirmed" : "pending",
+      confirmedAt: razorpayVerified ? new Date().toISOString() : "",
     });
+
+    const nowIso = new Date().toISOString();
+    const statsById = {};
+    for (const it of items) {
+      const productId = String(it.productId);
+      if (!statsById[productId]) statsById[productId] = { qty: 0, amount: 0 };
+      statsById[productId].qty += it.quantity;
+      statsById[productId].amount += it.quantity * it.price;
+    }
+    const productIds = Object.keys(statsById);
+    const productDocs = await Product.find({ uniqueProductId: { $in: productIds } });
+    for (const doc of productDocs) {
+      const s = statsById[doc.uniqueProductId];
+      if (!s) continue;
+      doc.unitsSold += s.qty;
+      doc.orderCount += 1;
+      doc.revenue += s.amount;
+      doc.lastOrderAt = nowIso;
+      const cartItem = (cart.items || []).find((i) => i.productId === doc.uniqueProductId);
+      if (cartItem && cartItem.addedAt) {
+        const dwellMs = Date.now() - new Date(cartItem.addedAt).getTime();
+        doc.cartDwellMinutes += Math.max(0, Math.round(dwellMs / 60000));
+        doc.cartDwellCount += 1;
+      }
+      await doc.save();
+    }
 
     const storeIds = [...new Set(items.map((i) => i.storeId))];
     const stores = await Store.find({ uniqueStoreId: { $in: storeIds } });

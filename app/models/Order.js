@@ -86,6 +86,7 @@ const OrderSchema = new Schema(
     },
     shippedAt: { type: String, default: "" },
     deliveredAt: { type: String, default: "" },
+    confirmedAt: { type: String, default: "" },
     cancellation: {
       reason: { type: String, default: "" },
       by: { type: String, default: "" },

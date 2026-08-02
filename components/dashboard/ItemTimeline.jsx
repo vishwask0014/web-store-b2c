@@ -4,6 +4,12 @@ export default function ItemTimeline({ item }) {
   const steps = [
     { key: "placed", label: "Placed", done: true, icon: Check },
     {
+      key: "confirmed",
+      label: "Confirmed",
+      done: Boolean(item.confirmedAt || item.paidAt),
+      icon: Check,
+    },
+    {
       key: "shipped",
       label: "Shipped",
       done: Boolean(item.shippedAt),

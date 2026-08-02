@@ -104,9 +104,9 @@ export default function StoreDetailPage() {
                     {store.address.country ? `, ${store.address.country}` : ""}
                   </p>
                 )}
-                {store.deliveryMinutes > 0 && (
+                {store.etaMinutes > 0 && (
                   <p className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" /> Delivery in ~{store.deliveryMinutes} min
+                    <Clock className="w-3.5 h-3.5" /> Delivery in ~{store.etaMinutes} min
                   </p>
                 )}
                 <p className="flex items-center gap-1.5">
