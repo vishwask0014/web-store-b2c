@@ -29,13 +29,15 @@ export default function ProfileDropdown({ compact = false }) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const displayName = user?.name || user?.displayName || "User";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const displayName = user?.name || user?.displayName || "Guest";
+  const initials = user
+    ? displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "U";
 
   const avatar = user?.avatar || "";
 
@@ -99,56 +101,78 @@ export default function ProfileDropdown({ compact = false }) {
               </div>
             </div>
 
-            <div className="py-1.5">
-              <Link
-                href="/profile-settings"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
-              >
-                <User className="w-4 h-4" /> Profile Settings
-              </Link>
-              <Link
-                href="/orders"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
-              >
-                <Package className="w-4 h-4" /> My Orders
-              </Link>
-              <Link
-                href="/cart"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
-              >
-                <ShoppingCart className="w-4 h-4" /> Cart
-              </Link>
-              <Link
-                href="/shop"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
-              >
-                <Store className="w-4 h-4" /> Shop
-              </Link>
-              {userType !== "customer" && (
+            {!user && (
+              <div className="py-1.5">
                 <Link
-                  href="/dashboard"
+                  href="/auth"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
                 >
-                  <LayoutDashboard className="w-4 h-4" /> Seller Dashboard
+                  <User className="w-4 h-4" /> Sign in
                 </Link>
-              )}
-            </div>
+                <Link
+                  href="/auth"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm font-medium text-primary-400 hover:text-primary-300 hover:bg-bg-muted transition-colors"
+                >
+                  Create an account
+                </Link>
+              </div>
+            )}
 
-            <div className="border-t border-border-divider py-1.5">
-              <button
-                onClick={handleLogout}
-                disabled={isLoading}
-                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
-              >
-                <LogOut className="w-4 h-4" />
-                {isLoading ? "Signing out..." : "Logout"}
-              </button>
-            </div>
+            {user && (
+              <>
+                <div className="py-1.5">
+                  <Link
+                    href="/profile-settings"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                  >
+                    <User className="w-4 h-4" /> Profile Settings
+                  </Link>
+                  <Link
+                    href="/orders"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                  >
+                    <Package className="w-4 h-4" /> My Orders
+                  </Link>
+                  <Link
+                    href="/cart"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                  >
+                    <ShoppingCart className="w-4 h-4" /> Cart
+                  </Link>
+                  <Link
+                    href="/shop"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                  >
+                    <Store className="w-4 h-4" /> Shop
+                  </Link>
+                  {userType !== "customer" && (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-muted transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" /> Seller Dashboard
+                    </Link>
+                  )}
+                </div>
+                <div className="border-t border-border-divider py-1.5">
+                  <button
+                    onClick={handleLogout}
+                    disabled={isLoading}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {isLoading ? "Signing out..." : "Logout"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

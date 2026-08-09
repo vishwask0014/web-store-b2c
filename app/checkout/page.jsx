@@ -302,7 +302,7 @@ export default function CheckoutPage() {
 
   if (placedOrder) {
     return (
-      <ShopLayout>
+      <ShopLayout requireAuth>
         <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-3xl border border-white/5 bg-[#18181B] p-8 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
             <CheckCircle2 className="h-7 w-7" />
@@ -338,7 +338,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <ShopLayout>
+      <ShopLayout requireAuth>
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-white/5 bg-[#18181B] p-10 text-center">
           <p className="text-sm text-zinc-500">Your cart is empty — nothing to check out.</p>
           <Link href="/shop" className="text-sm font-medium text-blue-400 hover:text-blue-300">
@@ -350,7 +350,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <ShopLayout>
+    <ShopLayout requireAuth>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <div>

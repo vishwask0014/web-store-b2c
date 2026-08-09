@@ -15,7 +15,7 @@ if (typeof window !== "undefined") {
   initCart();
 }
 
-export default function ShopLayout({ children }) {
+export default function ShopLayout({ children, requireAuth = false }) {
   const pathname = usePathname();
   const { user, userType } = useAuth();
   const { items, fetchCart } = useCartStore();
@@ -28,9 +28,8 @@ export default function ShopLayout({ children }) {
 
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
 
-  return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-bg-primary">
+  const content = (
+    <div className="min-h-screen bg-bg-primary">
         <header className="sticky top-0 z-30 h-16 px-4 md:px-8 flex items-center justify-between border-b border-border-default bg-bg-primary/75 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <Link href="/shop" className="flex items-center gap-2">
@@ -123,6 +122,11 @@ export default function ShopLayout({ children }) {
           </div>
         </nav>
       </div>
-    </ProtectedRoute>
   );
+
+  if (requireAuth) {
+    return <ProtectedRoute>{content}</ProtectedRoute>;
+  }
+
+  return content;
 }

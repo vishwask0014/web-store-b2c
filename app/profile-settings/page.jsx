@@ -837,7 +837,7 @@ export default function ProfilePage() {
   const Layout = userType === "customer" ? ShopLayout : DashboardLayout;
 
   return (
-    <Layout>
+    <Layout requireAuth>
       <ProfileContent />
     </Layout>
   );

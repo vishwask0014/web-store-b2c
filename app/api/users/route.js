@@ -124,7 +124,8 @@ export async function PUT(req) {
       };
       user.paymentMethods.push(card);
       if (!user.defaultPaymentMethod) {
-        user.defaultPaymentMethod = String(card._id);
+        const last = user.paymentMethods[user.paymentMethods.length - 1];
+        user.defaultPaymentMethod = String(last._id);
       }
       delete updates.addCard;
     }
@@ -142,7 +143,8 @@ export async function PUT(req) {
       };
       user.paymentMethods.push(upi);
       if (!user.defaultPaymentMethod) {
-        user.defaultPaymentMethod = String(upi._id);
+        const last = user.paymentMethods[user.paymentMethods.length - 1];
+        user.defaultPaymentMethod = String(last._id);
       }
       delete updates.addUpi;
     }

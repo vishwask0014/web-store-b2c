@@ -41,7 +41,7 @@ export default function WishlistPage() {
   };
 
   return (
-    <ShopLayout>
+    <ShopLayout requireAuth>
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-text-primary">
