@@ -82,9 +82,18 @@ export default function ShopLayout({ children, requireAuth = false }) {
                 </span>
               )}
             </Link>
-            <div className="pl-3 md:pl-4 border-l border-border-divider hidden sm:block">
-              <ProfileDropdown />
-            </div>
+            {user ? (
+              <div className="pl-3 md:pl-4 border-l border-border-divider hidden sm:block">
+                <ProfileDropdown />
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-medium shadow-md shadow-primary-500/25 hover:bg-primary-600 transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </header>
         <main className="max-w-6xl mx-auto p-4 md:p-8 pb-24 lg:pb-8">{children}</main>
