@@ -243,9 +243,11 @@ export default function TopNavbar({ onToggleSidebar }) {
             </AnimateMenu>
           </div>
 
-          <div className="flex items-center pl-1">
-            <ProfileDropdown compact />
-          </div>
+          {user && (
+            <div className="flex items-center pl-1">
+              <ProfileDropdown compact />
+            </div>
+          )}
         </div>
       </div>
     </div>
