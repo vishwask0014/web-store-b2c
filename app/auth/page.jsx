@@ -2,8 +2,10 @@ import Login from "@/app/components/AuthForm/Login";
 import SignIn from "@/app/components/AuthForm/SignIn";
 import PhoneLogin from "@/app/components/AuthForm/PhoneLogin";
 import { Suspense } from "react";
+import Link from "next/link";
 import { TabContent, TabList, TabRoot, TabTrigger } from "@/components/tailgrids/core/tabs";
 import { Store, BarChart3, Zap, ShieldCheck } from "lucide-react";
+import Logo from "@/app/components/common/Logo";
 
 const FEATURES = [
   { icon: Store, title: "Sell to thousands", desc: "Launch your store and reach customers across the marketplace." },
@@ -13,10 +15,14 @@ const FEATURES = [
 
 export default function AuthPage() {
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-zinc-950 p-4">
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-zinc-950 p-4">
       {/* Ambient glows */}
       <div className="pointer-events-none absolute -top-40 left-1/4 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 right-1/4 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl" />
+
+      <Link href="/" aria-label="B2C Store Home" className="relative mb-8 flex justify-center transition-opacity hover:opacity-80">
+        <Logo />
+      </Link>
 
       <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl shadow-black/50 md:grid-cols-[1.1fr_1fr]">
         {/* LEFT — form panel */}
