@@ -47,7 +47,7 @@ export function DonutChart({ title, subtitle, data }) {
               <p className="text-xs text-zinc-500">Total</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {data.map((d) => (
               <div key={d.label} className="flex items-center gap-2 text-sm">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />

@@ -16,7 +16,7 @@ export default function WalletSummary({ wallet }) {
   return (
     <div className="flex flex-col gap-4 rounded-3xl border border-white/5 bg-zinc-900 p-5 shadow-lg shadow-black/20 md:p-6">
       <SectionHeader title="Wallet" subtitle="Earnings at a glance" />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {CARDS.map((c, i) => {
           const Icon = c.icon;
           return (
