@@ -1,11 +1,16 @@
+"use client";
+
 import Login from "@/app/components/AuthForm/Login";
 import SignIn from "@/app/components/AuthForm/SignIn";
 import PhoneLogin from "@/app/components/AuthForm/PhoneLogin";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { TabContent, TabList, TabRoot, TabTrigger } from "@/components/tailgrids/core/tabs";
 import { Store, BarChart3, Zap, ShieldCheck } from "lucide-react";
 import Logo from "@/app/components/common/Logo";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import SplashScreen from "@/components/splash/SplashScreen";
 
 const FEATURES = [
   { icon: Store, title: "Sell to thousands", desc: "Launch your store and reach customers across the marketplace." },
@@ -14,6 +19,36 @@ const FEATURES = [
 ];
 
 export default function AuthPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    
+    if (user) {
+      console.log('[Auth Page] User already logged in, redirecting to dashboard');
+      router.replace("/dashboard");
+    }
+  }, [user, loading, router]);
+
+  // Show loading screen while checking auth
+  if (loading) {
+    return (
+      <SplashScreen
+        brand="B2C STORE"
+        tagline="your marketplace"
+        accent="#3B82F6"
+        minDuration={500}
+        ready={!loading}
+      />
+    );
+  }
+
+  // If user is logged in, show nothing (redirect is in progress)
+  if (user) {
+    return null;
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-zinc-950 p-4">
       {/* Ambient glows */}

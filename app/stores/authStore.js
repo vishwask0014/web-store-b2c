@@ -33,15 +33,21 @@ const useAuthStore = create((set) => ({
 
   refreshUser: async () => {
     try {
+      console.log('[Auth] Refreshing user session...');
       const res = await fetch("/api/auth/me", { cache: "no-store" });
+      console.log('[Auth] /api/auth/me response status:', res.status);
+      
       if (res.ok) {
         const data = await res.json();
+        console.log('[Auth] User restored from session:', data.user?.email || data.user?.uid);
         set({ user: data.user, userType: data.user.role, loading: false });
         return data.user;
       }
+      console.log('[Auth] No active session found');
       set({ user: null, userType: null, loading: false });
       return null;
-    } catch {
+    } catch (error) {
+      console.error('[Auth] Error refreshing user:', error);
       set({ user: null, userType: null, loading: false });
       return null;
     }
@@ -51,8 +57,12 @@ const useAuthStore = create((set) => ({
 let initialized = false;
 
 export function initAuth() {
-  if (initialized) return;
+  if (initialized) {
+    console.log('[Auth] Already initialized, skipping');
+    return;
+  }
   initialized = true;
+  console.log('[Auth] Initializing authentication...');
   useAuthStore.getState().refreshUser();
 }
 

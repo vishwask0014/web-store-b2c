@@ -102,8 +102,10 @@ export async function POST(req) {
       }
     }
 
+    console.log('[/api/auth/session] Creating session for user:', user.email || user.uid);
     const token = await signSessionToken(user);
     const response = NextResponse.json({ user });
+    console.log('[/api/auth/session] Session token created, setting cookie');
     return setSessionCookie(response, token);
   } catch (err) {
     console.error("[/api/auth/session] ERROR:", err.stack || err);
