@@ -37,9 +37,9 @@ export default function OrdersChart({ orders }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
         {data.map((d) => (
-          <div key={d.label} className="rounded-2xl border border-white/5 bg-zinc-950 px-3 py-2.5">
+          <div key={d.label} className="rounded-2xl border grid grid-cols-2 gap-2border-white/5 bg-zinc-950 px-3 py-2.5">
             <p className="text-lg font-bold text-zinc-100 tabular-nums">{d.value}</p>
             <p className="flex items-center gap-1.5 text-xs text-zinc-500">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: d.color }} />
