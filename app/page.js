@@ -1,4 +1,5 @@
 import { Button } from "@/components/tailgrids/core/button";
+import HomepageHeader from "@/app/components/common/HomepageHeader";
 import Logo from "@/app/components/common/Logo";
 import Link from "next/link";
 import {
@@ -118,26 +119,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-primary/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <Logo />
-          </div>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-text-secondary md:flex">
-            <Link
-              href="/shop"
-              className="font-semibold text-primary-400 transition-colors hover:text-primary-500"
-            >
-              Shop
-            </Link>
-          </nav>
-          <Link href="/auth">
-            <Button variant="primary" size="sm">
-              Start Selling
-            </Button>
-          </Link>
-        </div>
-      </header>
+      <HomepageHeader />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-primary to-bg-surface">
